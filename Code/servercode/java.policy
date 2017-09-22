@@ -1,0 +1,5 @@
+grant codeBase "file:/Users/maxencehull/Documents/Courses/COMP512/Project/Code/servercode/" {
+    permission java.security.AllPermission;
+};
+
+
