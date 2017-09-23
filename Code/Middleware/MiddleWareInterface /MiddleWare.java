@@ -21,7 +21,7 @@ import java.util.*;
  * has succeeded.
  */
 
-public interface ResourceManager extends Remote 
+public interface MiddleWare extends Remote
 {
     /* Add seats to a flight.  In general this will be used to create a new
      * flight, but it should be possible to add seats to an existing flight.
@@ -84,7 +84,7 @@ public interface ResourceManager extends Remote
 	throws RemoteException; 
     
     /* deleteCustomer removes the customer and associated reservations */
-    public boolean deleteCustomer(int id,int customer, String key, int count)
+    public boolean deleteCustomer(int id,int customer)
 	throws RemoteException; 
 
     /* queryFlight returns the number of empty seats. */
@@ -116,15 +116,15 @@ public interface ResourceManager extends Remote
 	throws RemoteException; 
 
     /* Reserve a seat on this flight*/
-    public String reserveFlight(int id, int customer, int flightNumber)
+    public boolean reserveFlight(int id, int customer, int flightNumber)
 	throws RemoteException; 
 
     /* reserve a car at this location */
-    public String reserveCar(int id, int customer, String location)
+    public boolean reserveCar(int id, int customer, String location)
 	throws RemoteException; 
 
     /* reserve a room certain at this location */
-    public String reserveRoom(int id, int customer, String locationd)
+    public boolean reserveRoom(int id, int customer, String locationd)
 	throws RemoteException; 
 
 

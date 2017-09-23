@@ -1,16 +1,12 @@
 import ResInterface.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.rmi.RMISecurityManager;
-
-import java.util.*;
-import java.io.*;
 
 
 public class ClientTest
 {
 
-    static ResourceManager rm = null;
+    static MiddleWare rm = null;
 
     public static void main(String args[]) {
 
@@ -33,7 +29,7 @@ public class ClientTest
             System.out.println(port);
             Registry registry = LocateRegistry.getRegistry(server, port);
             // get the proxy and the remote reference by rmiregistry lookup
-            rm = (ResourceManager) registry.lookup("Group4ResourceManager");
+            rm = (MiddleWare) registry.lookup("Group4ResourceManager");
             if (rm != null) {
                 System.out.println("Successful");
                 System.out.println("Connected to RM");

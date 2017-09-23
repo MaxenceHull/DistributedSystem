@@ -4,7 +4,8 @@
 //
 package ResImpl;
 
-import ResInterface.*;
+import ResInterface.MiddleWare;
+import ResInterface.ResourceManager;
 
 import java.util.*;
 
@@ -14,7 +15,7 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.rmi.RMISecurityManager;
 
-public class ResourceManagerImpl implements ResourceManager 
+public class ResourceManagerImpl implements ResourceManager
 {
     
     protected RMHashtable m_itemHT = new RMHashtable();
@@ -38,7 +39,7 @@ public class ResourceManagerImpl implements ResourceManager
             // create a new Server object
             ResourceManagerImpl obj = new ResourceManagerImpl();
             // dynamically generate the stub (client proxy)
-            ResourceManager rm = (ResourceManager) UnicastRemoteObject.exportObject(obj, 0);
+            MiddleWare rm = (MiddleWare) UnicastRemoteObject.exportObject(obj, 0);
 
             // Bind the remote object's stub in the registry
             Registry registry = LocateRegistry.getRegistry(port);
@@ -103,7 +104,7 @@ public class ResourceManagerImpl implements ResourceManager
                 Trace.info("RM::deleteItem(" + id + ", " + key + ") item can't be deleted because some customers reserved it" );
                 return false;
             }
-        } // if
+        } //if
     }
     
 
@@ -132,33 +133,26 @@ public class ResourceManagerImpl implements ResourceManager
     }
     
     // reserve an item
-    protected boolean reserveItem(int id, int customerID, String key, String location) {
-        Trace.info("RM::reserveItem( " + id + ", customer=" + customerID + ", " +key+ ", "+location+" ) called" );        
-        // Read customer object if it exists (and read lock it)
-        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );        
-        if ( cust == null ) {
-            Trace.warn("RM::reserveCar( " + id + ", " + customerID + ", " + key + ", "+location+")  failed--customer doesn't exist" );
-            return false;
-        } 
-        
+    protected String reserveItem(int id, int customerID, String key, String location) {
+        Trace.info("RM::reserveItem( " + id + ", customer=" + customerID + ", " +key+ ", "+location+" ) called" );
+        String answer = "0-0";
         // check if the item is available
         ReservableItem item = (ReservableItem)readData(id, key);
         if ( item == null ) {
             Trace.warn("RM::reserveItem( " + id + ", " + customerID + ", " + key+", " +location+") failed--item doesn't exist" );
-            return false;
+            return answer;
         } else if (item.getCount()==0) {
             Trace.warn("RM::reserveItem( " + id + ", " + customerID + ", " + key+", " + location+") failed--No more items" );
-            return false;
-        } else {            
-            cust.reserve( key, location, item.getPrice());        
-            writeData( id, cust.getKey(), cust );
-            
+            return answer;
+        } else {
+
             // decrease the number of available items in the storage
             item.setCount(item.getCount() - 1);
             item.setReserved(item.getReserved()+1);
             
             Trace.info("RM::reserveItem( " + id + ", " + customerID + ", " + key + ", " +location+") succeeded" );
-            return true;
+            answer = "1-" + String.valueOf(item.getPrice());
+            return answer;
         }        
     }
     
@@ -394,33 +388,20 @@ public class ResourceManagerImpl implements ResourceManager
 
 
     // Deletes customer from the database. 
-    public boolean deleteCustomer(int id, int customerID)
+    public boolean deleteCustomer(int id, int customerID, String key, int count)
         throws RemoteException
     {
         Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") called" );
-        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
-        if ( cust == null ) {
-            Trace.warn("RM::deleteCustomer(" + id + ", " + customerID + ") failed--customer doesn't exist" );
-            return false;
-        } else {            
-            // Increase the reserved numbers of all reservable items which the customer reserved. 
-            RMHashtable reservationHT = cust.getReservations();
-            for (Enumeration e = reservationHT.keys(); e.hasMoreElements();) {        
-                String reservedkey = (String) (e.nextElement());
-                ReservedItem reserveditem = cust.getReservedItem(reservedkey);
-                Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reserveditem.getKey() + " " +  reserveditem.getCount() +  " times"  );
-                ReservableItem item  = (ReservableItem) readData(id, reserveditem.getKey());
-                Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reserveditem.getKey() + "which is reserved" +  item.getReserved() +  " times and is still available " + item.getCount() + " times"  );
-                item.setReserved(item.getReserved()-reserveditem.getCount());
-                item.setCount(item.getCount()+reserveditem.getCount());
-            }
-            
-            // remove the customer from the storage
-            removeData(id, cust.getKey());
-            
-            Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") succeeded" );
-            return true;
-        } // if
+
+        // Increase the reserved numbers of all reservable items which the customer reserved.
+
+        ReservableItem item = (ReservableItem) readData(id, key);
+        item.setReserved(item.getReserved()-count);
+        item.setCount(item.getCount()+count);
+
+        Trace.info("RM::deleteCustomer(" + id + ", " + key + ", " + count + ") succeeded" );
+        return true;
+
     }
 
 
@@ -445,7 +426,7 @@ public class ResourceManagerImpl implements ResourceManager
 
     
     // Adds car reservation to this customer. 
-    public boolean reserveCar(int id, int customerID, String location)
+    public String reserveCar(int id, int customerID, String location)
         throws RemoteException
     {
         return reserveItem(id, customerID, Car.getKey(location), location);
@@ -453,13 +434,14 @@ public class ResourceManagerImpl implements ResourceManager
 
 
     // Adds room reservation to this customer. 
-    public boolean reserveRoom(int id, int customerID, String location)
+    public String reserveRoom(int id, int customerID, String location)
         throws RemoteException
     {
         return reserveItem(id, customerID, Hotel.getKey(location), location);
     }
+
     // Adds flight reservation to this customer.  
-    public boolean reserveFlight(int id, int customerID, int flightNum)
+    public String reserveFlight(int id, int customerID, int flightNum)
         throws RemoteException
     {
         return reserveItem(id, customerID, Flight.getKey(flightNum), String.valueOf(flightNum));

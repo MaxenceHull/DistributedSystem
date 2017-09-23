@@ -1,7 +1,7 @@
-import ResInterface.*;
+import ResInterface.MiddleWare;
+
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.rmi.RMISecurityManager;
 
 import java.util.*;
 import java.io.*;
@@ -10,7 +10,7 @@ import java.io.*;
 public class client
 {
     static String message = "blank";
-    static ResourceManager rm = null;
+    static MiddleWare rm = null;
 
     public static void main(String args[])
     {
@@ -53,7 +53,7 @@ public class client
             System.out.println(port);
             Registry registry = LocateRegistry.getRegistry(server, port);
             // get the proxy and the remote reference by rmiregistry lookup
-            rm = (ResourceManager) registry.lookup("Group4ResourceManager");
+            rm = (MiddleWare) registry.lookup("Group4ResourceManager");
             if(rm!=null)
             {
                 System.out.println("Successful");
