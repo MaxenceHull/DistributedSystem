@@ -49,11 +49,9 @@ public class client
         try 
         {
             // get a reference to the rmiregistry
-            System.out.println(server);
-            System.out.println(port);
             Registry registry = LocateRegistry.getRegistry(server, port);
             // get the proxy and the remote reference by rmiregistry lookup
-            rm = (ResourceManager) registry.lookup("Group4ResourceManager");
+            rm = (ResourceManager) registry.lookup("Group4MiddlewareManager");
             if(rm!=null)
             {
                 System.out.println("Successful");

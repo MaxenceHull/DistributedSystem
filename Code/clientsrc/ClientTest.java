@@ -33,7 +33,7 @@ public class ClientTest
             System.out.println(port);
             Registry registry = LocateRegistry.getRegistry(server, port);
             // get the proxy and the remote reference by rmiregistry lookup
-            rm = (ResourceManager) registry.lookup("Group4ResourceManager");
+            rm = (ResourceManager) registry.lookup("Group4MiddlewareManager");
             if (rm != null) {
                 System.out.println("Successful");
                 System.out.println("Connected to RM");
@@ -50,6 +50,7 @@ public class ClientTest
         if (System.getSecurityManager() == null) {
             //System.setSecurityManager(new RMISecurityManager());
         }
+
 
         //Test 1: Add and delete a flight
         addAFlight(1, 777, 12, 1000);
@@ -99,6 +100,7 @@ public class ClientTest
             System.out.println("Test 4 - 1 failed");
         }
         deleteACustomer(1, customer);
+        System.out.print(queryCustomer(2, customer));
         if(queryCustomer(2, customer).contains(Integer.toString(customer))){
             System.out.println("Test 4 - 2 failed");
         }

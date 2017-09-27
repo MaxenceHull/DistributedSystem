@@ -1,0 +1,5 @@
+grant codeBase "file:/Users/maxencehull/Documents/Courses/COMP512/Project/Code/middleware/" {
+    permission java.security.AllPermission;
+};
+
+
