@@ -459,7 +459,91 @@ public class ResourceManagerImpl implements ResourceManager
     {
         return reserveItem(id, customerID, Hotel.getKey(location), location);
     }
-    // Adds flight reservation to this customer.  
+
+    @Override
+    public boolean cancelRoom(int id, int customer, String location) throws RemoteException {
+        Trace.info("RM::cancelRoom(" + id + ", " + customer + ") called" );
+        Customer cust = (Customer) readData( id, Customer.getKey(customer) );
+        if ( cust == null ) {
+            Trace.warn("RM::cancelRoom(" + id + ", " + customer + ") failed--customer doesn't exist" );
+            return false;
+        } else {
+            // Increase the reserved numbers of all reservable items which the customer reserved.
+            RMHashtable reservationHT = cust.getReservations();
+            for (Enumeration e = reservationHT.keys(); e.hasMoreElements();) {
+                String reservedkey = (String) (e.nextElement());
+                if(reservedkey.equals(Hotel.getKey(location))){
+                    ReservedItem reserveditem = cust.getReservedItem(reservedkey);
+                    Trace.info("RM::cancelRoom(" + id + ", " + customer + ") has reserved " + reserveditem.getKey() + " " +  reserveditem.getCount() +  " times"  );
+                    ReservableItem item  = (ReservableItem) readData(id, reserveditem.getKey());
+                    Trace.info("RM::cancelRoom(" + id + ", " + customer + ") has reserved " + reserveditem.getKey() + "which is reserved" +  item.getReserved() +  " times and is still available " + item.getCount() + " times"  );
+                    item.setReserved(item.getReserved()-1);
+                    item.setCount(item.getCount()+1);
+                    cust.cancel(reservedkey);
+
+                }
+            }
+            Trace.info("RM::cancelRoom(" + id + ", " + customer + ") succeeded" );
+            return true;
+        }
+    }
+
+    @Override
+    public boolean cancelFlight(int id, int customer, int flightNumber) throws RemoteException {
+        Trace.info("RM::cancelFlight(" + id + ", " + customer + ") called" );
+        Customer cust = (Customer) readData( id, Customer.getKey(customer) );
+        if ( cust == null ) {
+            Trace.warn("RM::cancelFlight(" + id + ", " + customer + ") failed--customer doesn't exist" );
+            return false;
+        } else {
+            // Increase the reserved numbers of all reservable items which the customer reserved.
+            RMHashtable reservationHT = cust.getReservations();
+            for (Enumeration e = reservationHT.keys(); e.hasMoreElements();) {
+                String reservedkey = (String) (e.nextElement());
+                if(reservedkey.equals(Flight.getKey(flightNumber))){
+                    ReservedItem reserveditem = cust.getReservedItem(reservedkey);
+                    Trace.info("RM::cancelFlight(" + id + ", " + customer + ") has reserved " + reserveditem.getKey() + " " +  reserveditem.getCount() +  " times"  );
+                    ReservableItem item  = (ReservableItem) readData(id, reserveditem.getKey());
+                    Trace.info("RM::cancelFlight(" + id + ", " + customer + ") has reserved " + reserveditem.getKey() + "which is reserved" +  item.getReserved() +  " times and is still available " + item.getCount() + " times"  );
+                    item.setReserved(item.getReserved()-1);
+                    item.setCount(item.getCount()+1);
+                    cust.cancel(reservedkey);
+
+                }
+            }
+            Trace.info("RM::cancelFlight(" + id + ", " + customer + ") succeeded" );
+            return true;
+        }
+    }
+
+    @Override
+    public boolean cancelCar(int id, int customer, String location) throws RemoteException {
+        Trace.info("RM::cancelCar(" + id + ", " + customer + ") called" );
+        Customer cust = (Customer) readData( id, Customer.getKey(customer) );
+        if ( cust == null ) {
+            Trace.warn("RM::cancelCar(" + id + ", " + customer + ") failed--customer doesn't exist" );
+            return false;
+        } else {
+            // Increase the reserved numbers of all reservable items which the customer reserved.
+            RMHashtable reservationHT = cust.getReservations();
+            for (Enumeration e = reservationHT.keys(); e.hasMoreElements();) {
+                String reservedkey = (String) (e.nextElement());
+                if(reservedkey.equals(Car.getKey(location))){
+                    ReservedItem reserveditem = cust.getReservedItem(reservedkey);
+                    Trace.info("RM::cancelCar(" + id + ", " + customer + ") has reserved " + reserveditem.getKey() + " " +  reserveditem.getCount() +  " times"  );
+                    ReservableItem item  = (ReservableItem) readData(id, reserveditem.getKey());
+                    Trace.info("RM::cancelCar(" + id + ", " + customer + ") has reserved " + reserveditem.getKey() + "which is reserved" +  item.getReserved() +  " times and is still available " + item.getCount() + " times"  );
+                    item.setReserved(item.getReserved()-1);
+                    item.setCount(item.getCount()+1);
+                    cust.cancel(reservedkey);
+                }
+            }
+            Trace.info("RM::cancelCar(" + id + ", " + customer + ") succeeded" );
+            return true;
+        }
+    }
+
+    // Adds flight reservation to this customer.
     public boolean reserveFlight(int id, int customerID, int flightNum)
         throws RemoteException
     {

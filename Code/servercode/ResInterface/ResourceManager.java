@@ -124,9 +124,17 @@ public interface ResourceManager extends Remote
 	throws RemoteException; 
 
     /* reserve a room certain at this location */
-    public boolean reserveRoom(int id, int customer, String locationd) 
-	throws RemoteException; 
+    public boolean reserveRoom(int id, int customer, String location)
+	throws RemoteException;
 
+    /* cancel a room at this location */
+    public boolean cancelRoom(int id, int customer, String location) throws RemoteException;
+
+    /* cancel a seat in this flight */
+    public boolean cancelFlight(int id, int customer, int flightNumber) throws RemoteException;
+
+    /* cancel a car at this location */
+    public boolean cancelCar(int id, int customer, String location) throws RemoteException;
 
     /* reserve an itinerary */
     public boolean itinerary(int id,int customer,Vector flightNumbers,String location, boolean Car, boolean Room)

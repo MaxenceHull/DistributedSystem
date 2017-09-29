@@ -139,6 +139,44 @@ public class ClientTest
         deleteAFlight(3, 778);
         System.out.println("Test 5 passed");
 
+        //Test 6: itinerary
+        customer = addACustomer(1);
+        addAFlight(1, 1, 1, 1230);
+        addAFlight(1, 2, 10, 879);
+        addARoom(1, "Calgary", 3, 55);
+        addACar(1, "Calgary", 2, 430);
+        Vector flightNumbers = new Vector();
+        flightNumbers.add(1);
+        flightNumbers.add(2);
+        reserveItinerary(1, customer, flightNumbers, "Calgary", true, true);
+        if(queryAFlight(1, 1) != 0){
+            System.out.println("Test 6 - 1 failed");
+        }
+        if(queryAFlight(1, 2) != 9){
+            System.out.println("Test 6 - 2 failed");
+        }
+        if(queryARoomLocation(3, "Calgary")!= 2){
+            System.out.println("Test 6 - 3 failed");
+        }
+        if(queryACarLocation(1, "Calgary") != 1){
+            System.out.println("Test 6 - 4 failed");
+        }
+
+        reserveItinerary(1, customer, flightNumbers, "Calgary", true, true);
+        if(queryAFlight(1, 1) != 0){
+            System.out.println("Test 6 - 5 failed");
+        }
+        if(queryAFlight(1, 2) != 9){
+            System.out.println("Test 6 - 6 failed");
+        }
+        if(queryARoomLocation(3, "Calgary")!= 2){
+            System.out.println("Test 6 - 7 failed");
+        }
+        if(queryACarLocation(1, "Calgary") != 1){
+            System.out.println("Test 6 - 8 failed");
+        }
+
+
     }
 
 
@@ -351,6 +389,16 @@ public class ClientTest
             rm.reserveRoom(id, customer, location);
         }
         catch(Exception e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void reserveItinerary(int id, int customer, Vector flightNumbers, String location, boolean hasCar, boolean hasRoom){
+        try{
+            rm.itinerary(id, customer, flightNumbers, location, hasCar, hasRoom);
+        }catch (Exception e){
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();

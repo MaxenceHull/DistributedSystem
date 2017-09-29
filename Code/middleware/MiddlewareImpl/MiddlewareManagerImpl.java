@@ -412,8 +412,58 @@ public class MiddlewareManagerImpl implements ResourceManager
     }
 
     @Override
-    public boolean itinerary(int id, int customer, Vector flightNumbers, String location, boolean Car, boolean Room) throws RemoteException {
+    public boolean cancelRoom(int id, int customer, String location) throws RemoteException {
         return false;
+    }
+
+    @Override
+    public boolean cancelFlight(int id, int customer, int flightNumber) throws RemoteException {
+        return false;
+    }
+
+    @Override
+    public boolean cancelCar(int id, int customer, String location) throws RemoteException {
+        return false;
+    }
+
+    @Override
+    public boolean itinerary(int id, int customer, Vector flightNumbers, String location, boolean Car, boolean Room) throws RemoteException {
+        lockEverything();
+        try {
+            Vector flightResults = new Vector(flightNumbers.size());
+            boolean carResult = true, roomResult = true;
+            for(Object flightNumber: flightNumbers){
+                flightResults.add(rmFlight.reserveFlight(id, customer, (int)flightNumber));
+            }
+            if(Car){
+                carResult = rmCar.reserveCar(id, customer, location);
+            }
+            if(Room){
+                roomResult = rmRoom.reserveRoom(id, customer, location);
+            }
+
+            // Verify if a reservation has not been made
+            if (flightResults.contains(false) || !carResult || !roomResult) {
+                // Cancel all reservations
+                for(int i=0; i < flightNumbers.size(); i++){
+                    if((boolean)flightResults.get(i)){
+                        rmFlight.cancelFlight(id, customer, (int)flightNumbers.get(i));
+                    }
+                }
+                if(Car && carResult){
+                    rmCar.cancelCar(id, customer, location);
+                }
+                if(Room && roomResult){
+                    rmRoom.cancelRoom(id, customer, location);
+                }
+
+                return false;
+            }
+            return true;
+        } finally {
+            unlockEverything();
+        }
+
     }
 
     private void lockEverything(){
