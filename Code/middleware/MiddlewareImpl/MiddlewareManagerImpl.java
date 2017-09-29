@@ -99,6 +99,7 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException {
+        lockFlight.lock();
         boolean result = false;
         try{
             result = rmFlight.addFlight(id,flightNum,flightSeats,flightPrice);
@@ -107,6 +108,8 @@ public class MiddlewareManagerImpl implements ResourceManager
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+        } finally {
+            lockFlight.unlock();
         }
         return result;
     }
