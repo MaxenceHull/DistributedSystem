@@ -2,7 +2,7 @@
 // adapted Kevin T. Manley
 // CSE 593
 // -------------------------------
-package ResourceManager;
+package ResourceManagerImpl;
 
 import java.io.Serializable;
 
