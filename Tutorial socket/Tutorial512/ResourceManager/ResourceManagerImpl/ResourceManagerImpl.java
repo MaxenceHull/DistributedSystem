@@ -3,7 +3,6 @@ package ResourceManagerImpl;
 import java.util.Calendar;
 import java.util.Enumeration;
 import java.util.Vector;
-import ResourceManager*;
 
 public class ResourceManagerImpl {
 
