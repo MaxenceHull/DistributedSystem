@@ -3,5 +3,5 @@
 #javac -cp "/Users/maxencehull/Documents/Courses/COMP512/Project/Code/clientsrc/ResInterface.jar" /Users/maxencehull/Documents/Courses/COMP512/Project/Code/clientsrc/client.java
 #java -cp "/Users/maxencehull/Documents/Courses/COMP512/Project/Code/clientsrc/" -Djava.security.policy=java.policy client
 
-javac /Users/maxencehull/Documents/Courses/COMP512/Project/Code/clientsrc/client.java
+javac client.java
 java -Djava.security.policy=java.policy client

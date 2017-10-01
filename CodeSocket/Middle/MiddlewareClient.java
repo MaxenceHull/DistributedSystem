@@ -16,16 +16,20 @@ public class MiddlewareClient extends Thread {
     private Socket socket;
     private String serverName;
     private int port;
-    private ReentrantLock lock1;
-    private ReentrantLock lock2;
-    private ReentrantLock lock3;
+
+    static private ReentrantLock flightLock = new ReentrantLock();
+    static private ReentrantLock roomLock = new ReentrantLock();
+    static private ReentrantLock carLock = new ReentrantLock();
+
     static String serverFlight = "localhost";
     static String serverRoom = "localhost";
     static String serverCar = "localhost";
 
-    static int portFlight = 9000;
-    static int portRoom = 9000;
-    static int portCar = 9000;
+    static int portFlight = 9001;
+    static int portRoom = 9002;
+    static int portCar = 9003;
+
+
 
     public MiddlewareClient (String message, Socket socket, String serverName, int port)
     {
@@ -35,28 +39,11 @@ public class MiddlewareClient extends Thread {
         this.port=port;
     }
 
-    public MiddlewareClient (String message, Socket socket, String serverName, int port, ReentrantLock lock)
+    public MiddlewareClient (String message, Socket socket)
     {
         this.message=message;
-        this.serverName=serverName;
         this.socket=socket;
-        this.port=port;
-        this.lock1=lock;
-        lock1.lock();
-    }
 
-    public MiddlewareClient (String message, Socket socket, String serverName, int port, ReentrantLock lock1, ReentrantLock lock2, ReentrantLock lock3)
-    {
-        this.message=message;
-        this.serverName=serverName;
-        this.socket=socket;
-        this.port=port;
-        this.lock1=lock1;
-        this.lock2=lock2;
-        this.lock3=lock3;
-        lock1.lock();
-        lock2.lock();
-        lock3.lock();
     }
     public void run ()
     {
@@ -64,6 +51,7 @@ public class MiddlewareClient extends Thread {
             String [] params = message.split(",");
             if (params[0].equals("queryCustomerInfo"))
             {
+                System.out.println("queryCustomerInfo: "+message);
                 Socket flightSocket = new Socket(serverFlight, portFlight);
                 Socket roomSocket = new Socket(serverRoom, portRoom);
                 Socket carSocket = new Socket(serverCar, portCar);
@@ -76,32 +64,26 @@ public class MiddlewareClient extends Thread {
                 BufferedReader inFromRoom = new BufferedReader(new InputStreamReader(roomSocket.getInputStream()));
 
                 outToFlight.println(message);
-                outToRoom.println(message);
-                outToCar.println(message);
+                String line;
+                String bill = inFromFlight.readLine();
+                while (inFromFlight.ready() && (line = inFromFlight.readLine()) != null) {
+                    bill += line;
+                }
 
-                String res = null;
-                String temp;
-                while ((temp = inFromFlight.readLine()) != null) {
-                    res += temp;
-                    System.out.println("received from rmFlight: " + temp); // print the server result to the user
+                outToRoom.println(message);
+                inFromRoom.readLine();
+                while (inFromRoom.ready() && (line = inFromRoom.readLine()) != null) {
+                    bill += line;
                 }
-                while ((temp = inFromCar.readLine()) != null) {
-                    if (!temp.contains("customer"))
-                    {
-                        res += temp;
-                    }
-                    System.out.println("received from rmCar: " + temp); // print the server result to the user
-                }
-                while ((temp = inFromRoom.readLine()) != null) {
-                    if (!temp.contains("customer"))
-                    {
-                        res += temp;
-                    }
-                    System.out.println("received from rmRoom: " + temp); // print the server result to the user
+
+                outToCar.println(message);
+                inFromCar.readLine();
+                while (inFromCar.ready() && (line = inFromCar.readLine()) != null) {
+                    bill += line;
                 }
 
                 PrintWriter outToClient = new PrintWriter(socket.getOutputStream(), true);
-                outToClient.println(res);
+                outToClient.println(bill);
 
                 socket.close();
                 flightSocket.close();
@@ -111,7 +93,8 @@ public class MiddlewareClient extends Thread {
             }
             else if (params[0].equals("newCustomer"))
             {
-
+                System.out.println("Received request: new customer with "+String.valueOf(params.length)+" args");
+                lockEverything();
                 Socket flightSocket = new Socket(serverFlight, portFlight);
                 Socket roomSocket = new Socket(serverRoom, portRoom);
                 Socket carSocket = new Socket(serverCar, portCar);
@@ -119,79 +102,76 @@ public class MiddlewareClient extends Thread {
                 PrintWriter outToFlight = new PrintWriter(flightSocket.getOutputStream(), true);
                 BufferedReader inFromFlight = new BufferedReader(new InputStreamReader(flightSocket.getInputStream()));
                 PrintWriter outToCar = new PrintWriter(carSocket.getOutputStream(), true);
-                BufferedReader inFromCar = new BufferedReader(new InputStreamReader(carSocket.getInputStream()));
                 PrintWriter outToRoom = new PrintWriter(roomSocket.getOutputStream(), true);
-                BufferedReader inFromRoom = new BufferedReader(new InputStreamReader(roomSocket.getInputStream()));
+                PrintWriter outToClient = new PrintWriter(socket.getOutputStream(), true);
 
                 String cid;
                 if (params.length == 1)
                 {
+                    System.out.println("Creating a new cid: "+message);
                     outToFlight.println(message);
-                    String msg = message;
-                    msg += ",";
                     cid = inFromFlight.readLine();
-                    msg += cid;
-                    outToRoom.println(msg);
-                    outToCar.println(msg);
+                    System.out.println("Cid: "+cid);
+                    message+= ","+cid;
+                    //Send request with the cid given by the first RM
+                    outToRoom.println(message);
+                    outToCar.println(message);
+                    outToClient.println(cid);
                 } else
                 {
                     outToFlight.println(message);
-                    outToCar.println(message);
-                    outToRoom.println(message);
-                    cid = inFromCar.readLine();
+                    boolean flightRes = Boolean.valueOf(inFromFlight.readLine());
+                    if(flightRes){
+                        outToCar.println(message);
+                        outToRoom.println(message);
+                        outToClient.println("true");
+                    } else {
+                        outToClient.println("false");
+                    }
                 }
-
-                PrintWriter outToClient = new PrintWriter(socket.getOutputStream(), true);
-                outToClient.println(cid);
 
                 socket.close();
                 flightSocket.close();
                 carSocket.close();
                 roomSocket.close();
 
-                lock1.unlock();
-                lock2.unlock();
-                lock3.unlock();
-
+                unlockEverything();
             }
             else if (params[0].equals("deleteCustomer"))
             {
+                System.out.println("Received request: delete customer");
+                lockEverything();
                 Socket flightSocket = new Socket(serverFlight, portFlight);
                 Socket roomSocket = new Socket(serverRoom, portRoom);
                 Socket carSocket = new Socket(serverCar, portCar);
 
                 PrintWriter outToFlight = new PrintWriter(flightSocket.getOutputStream(), true);
-                BufferedReader inFromFlight = new BufferedReader(new InputStreamReader(flightSocket.getInputStream()));
                 PrintWriter outToCar = new PrintWriter(carSocket.getOutputStream(), true);
                 BufferedReader inFromCar = new BufferedReader(new InputStreamReader(carSocket.getInputStream()));
                 PrintWriter outToRoom = new PrintWriter(roomSocket.getOutputStream(), true);
-                BufferedReader inFromRoom = new BufferedReader(new InputStreamReader(roomSocket.getInputStream()));
+                PrintWriter outToClient = new PrintWriter(socket.getOutputStream(), true);
 
                 outToCar.println(message);
-                outToFlight.println(message);
-                outToRoom.println(message);
-
-                String res = null;
-                String temp;
-                while ((temp = inFromFlight.readLine()) != null) {
-                    res += temp;
-                    System.out.println("received: " + temp); // print the server result to the user
+                if(Boolean.valueOf(inFromCar.readLine())){
+                    outToFlight.println(message);
+                    outToRoom.println(message);
+                    outToClient.println("true");
+                } else {
+                    outToClient.println("false");
                 }
-                PrintWriter outToClient = new PrintWriter(socket.getOutputStream(), true);
-                outToClient.println(res);
 
                 socket.close();
                 flightSocket.close();
                 carSocket.close();
                 roomSocket.close();
 
-                lock1.unlock();
-                lock2.unlock();
-                lock3.unlock();
+                unlockEverything();
 
             }
             else if (params[0].equals("itinerary"))
             {
+                System.out.println("itinerary");
+                lockEverything();
                 Socket flightSocket = new Socket(serverFlight, portFlight);
                 Socket roomSocket = new Socket(serverRoom, portRoom);
                 Socket carSocket = new Socket(serverCar, portCar);
@@ -205,65 +185,56 @@ public class MiddlewareClient extends Thread {
 
                 String msg;
                 String res = "true";
-                Vector flightResults = new Vector(params.length-5);
+                Vector flightResults = new Vector();
+                flightResults.add(new Object());
+                flightResults.add(new Object());
                 boolean carResult = true;
                 boolean roomResult = true;
 
-                for (int i=0; i<params.length-5; i++) // itinerary,custID, flight1..., flightN, location, car?, room?
+                for (int i=2; i<params.length-3; i++) // itinerary,custID, flight1..., flightN, location, car?, room?
                 {
-                    msg = "reserveFlight,";
-                    msg += params[1];
-                    msg += ",";
-                    msg += params[i+2];
+                    msg = "reserveFlight,"+params[1]+","+params[i];
+                    System.out.println(msg);
                     outToFlight.println(msg);
                     flightResults.add(Boolean.valueOf(inFromFlight.readLine()));
-
                 }
-                if (Boolean.valueOf(params[-1])) // Room
+                if (Boolean.valueOf(params[params.length-1])) // Room
                 {
-                    msg = "reserveRoom,";
-                    msg += params[1];
-                    msg += ",";
-                    msg += params[-3];
+                    msg = "reserveRoom,"+params[1]+","+params[params.length-3];
                     outToRoom.println(msg);
                     roomResult = Boolean.valueOf(inFromRoom.readLine());
                 }
-                if (Boolean.valueOf(params[-2])) // Car
+                if (Boolean.valueOf(params[params.length-2])) // Car
                 {
-                    msg = "reserveCar,";
-                    msg += params[1];
-                    msg += ",";
-                    msg += params[-3];
+                    msg = "reserveCar,"+params[1]+","+params[params.length-3];
                     outToCar.println(msg);
                     carResult = Boolean.valueOf(inFromCar.readLine());
                 }
                 // Verify if a reservation has not been made
                 if (flightResults.contains(false) || !carResult || !roomResult)
                 {
-                    //Cancel all reservation
-                    for (int j=0; j<params.length-5; j++)
+
+                    //Cancel all reservations
+                    for (int j=2; j<flightResults.size(); j++)
                     {
-                        msg = "cancelFlight,";
-                        msg += params[1];
-                        msg += ",";
-                        msg += params[j+2];
-                        outToFlight.println(msg);
+                        if((boolean)flightResults.get(j)){
+                            msg = "cancelFlight,"+params[1]+","+params[j];
+                            outToFlight.println(msg);
+                        }
                     }
-                    if (Boolean.valueOf(params[-1]))
+                    if (Boolean.valueOf(params[params.length-1]))
                     {
-                        msg = "cancelRoom,";
-                        msg += params[1];
-                        msg += ",";
-                        msg += params[-3];
-                        outToRoom.println(msg);
+                        if(roomResult){
+                            msg = "cancelRoom,"+params[1]+","+params[params.length-3];
+                            outToRoom.println(msg);
+                        }
                     }
-                    if (Boolean.valueOf(params[-2]))
+                    if (Boolean.valueOf(params[params.length-2]))
                     {
-                        msg = "cancelCar,";
-                        msg += params[1];
-                        msg += ",";
-                        msg += params[-3];
-                        outToCar.println(msg);
+                        if(carResult){
+                            msg = "cancelCar,"+params[1]+","+params[params.length-3];
+                            outToCar.println(msg);
+                        }
                     }
                     res = "false";
                 }
@@ -276,38 +247,63 @@ public class MiddlewareClient extends Thread {
                 carSocket.close();
                 roomSocket.close();
 
-                lock1.unlock();
-                lock2.unlock();
-                lock3.unlock();
+                unlockEverything();
 
             }
             else
             {
-
+                System.out.println("Middleware thread created for function "+params[0]);
+                lock(params[0]);
                 Socket rmSocket = new Socket(serverName, port);
 
                 PrintWriter outToServer = new PrintWriter(rmSocket.getOutputStream(), true); // open an output stream to the server...
                 BufferedReader inFromServer = new BufferedReader(new InputStreamReader(rmSocket.getInputStream())); // open an input stream from the server...
 
-
                 outToServer.println(message);
-                String res = null;
-                String temp;
-                while ((temp = inFromServer.readLine()) != null) {
-                    res += temp;
-                    System.out.println("received: " + temp); // print the server result to the user
-                }
-
+                String res = inFromServer.readLine();
+                System.out.println("received(final): " + res);
                 PrintWriter outToClient = new PrintWriter(socket.getOutputStream(), true);
                 outToClient.println(res);
 
                 socket.close();
                 rmSocket.close();
-                lock1.unlock();
+                unlock(params[0]);
             }
 
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static void lock(String function){
+        if (function.contains("flight")){
+            flightLock.lock();
+        } else if(function.contains("car")){
+            carLock.lock();
+        } else if(function.contains("room")){
+            roomLock.lock();
+        }
+    }
+
+    private static void unlock(String function){
+        if (function.contains("flight")){
+            flightLock.unlock();
+        } else if(function.contains("car")){
+            carLock.unlock();
+        } else if(function.contains("room")){
+            roomLock.unlock();
+        }
+    }
+
+    private static void lockEverything(){
+        flightLock.lock();
+        roomLock.lock();
+        carLock.lock();
+    }
+
+    private static void unlockEverything(){
+        roomLock.unlock();
+        flightLock.unlock();
+        carLock.unlock();
     }
 }

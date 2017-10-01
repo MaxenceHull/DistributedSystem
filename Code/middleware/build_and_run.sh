@@ -4,7 +4,7 @@ echo Creating RMI Registry
 rmiregistry -J-DJava.rmi.server.useCodebaseOnly=false 1099 &
 
 echo Build Server
-cd /Users/maxencehull/Documents/Courses/COMP512/Project/Code/middleware/
+#cd /Users/maxencehull/Documents/Courses/COMP512/Project/Code/middleware/
 # export CLASSPATH=/Users/maxencehull/Documents/Courses/COMP512/Project/Code/servercode
 
 javac MiddlewareImpl/MiddlewareManagerImpl.java

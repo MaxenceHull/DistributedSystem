@@ -57,6 +57,7 @@ public class ServerThread extends Thread
                 } else if(params[0].equals("queryCustomerInfo")){
                     message = resourceManager.queryCustomerInfo(1, Integer.parseInt(params[1]));
                 } else if(params[0].equals("newCustomer")){
+                    System.out.println("Received request: new customer with "+String.valueOf(params.length)+" args");
                     if(params.length == 1){
                         message = String.valueOf(resourceManager.newCustomer(1));
                     }else {

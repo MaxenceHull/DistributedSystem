@@ -6,7 +6,7 @@ echo Creating RMI Registry
 rmiregistry -J-DJava.rmi.server.useCodebaseOnly=false 1099 &
 
 echo Build Server
-cd /Users/maxencehull/Documents/Courses/COMP512/Project/Code/servercode/
+#cd /Users/maxencehull/Documents/Courses/COMP512/Project/Code/servercode/
 # export CLASSPATH=/Users/maxencehull/Documents/Courses/COMP512/Project/Code/servercode
 javac ResInterface/ResourceManager.java
 jar cvf ResInterface.jar ResInterface/*.class

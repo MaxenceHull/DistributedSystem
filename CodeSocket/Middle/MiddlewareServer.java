@@ -27,7 +27,7 @@ public class MiddlewareServer {
     }
 
     public void forward() throws IOException {
-        ServerSocket serverSocket = new ServerSocket(9090);
+        ServerSocket serverSocket = new ServerSocket(9000);
         while (true) {
 
             Socket socket = serverSocket.accept();

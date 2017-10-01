@@ -10,7 +10,7 @@ public class Client{
 	{
 		String serverName=args[0];
 
-		Socket socket= new Socket(serverName, 9090); // establish a socket with a server using the given port#
+		Socket socket= new Socket(serverName, 9000); // establish a socket with a server using the given port#
 
 		PrintWriter outToServer= new PrintWriter(socket.getOutputStream(),true); // open an output stream to the server...
 		BufferedReader inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream())); // open an input stream from the server...

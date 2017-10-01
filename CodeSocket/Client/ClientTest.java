@@ -1,52 +1,19 @@
-import ResInterface.*;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.Vector;
 
 
 public class ClientTest
 {
 
-    static ResourceManager rm = null;
+    private static String serverName = "localhost";
+    private static int port = 9000;
 
     public static void main(String args[]) {
-
-        String server = "localhost";
-        int port = 1099;
-        if (args.length > 0) {
-            server = args[0];
-        }
-        if (args.length > 1) {
-            port = Integer.parseInt(args[1]);
-        }
-        if (args.length > 2) {
-            System.out.println("Usage: java client [rmihost [rmiport]]");
-            System.exit(1);
-        }
-
-        try {
-            // get a reference to the rmiregistry
-            System.out.println(server);
-            System.out.println(port);
-            Registry registry = LocateRegistry.getRegistry(server, port);
-            // get the proxy and the remote reference by rmiregistry lookup
-            rm = (ResourceManager) registry.lookup("Group4MiddlewareManager");
-            if (rm != null) {
-                System.out.println("Successful");
-                System.out.println("Connected to RM");
-            } else {
-                System.out.println("Unsuccessful");
-            }
-            // make call on remote method
-        } catch (Exception e) {
-            System.err.println("Client exception: " + e.toString());
-            e.printStackTrace();
-        }
-
-
-        if (System.getSecurityManager() == null) {
-            //System.setSecurityManager(new RMISecurityManager());
+        if(args.length > 0){
+            serverName = args[0];
         }
 
 
@@ -102,6 +69,14 @@ public class ClientTest
         if(queryCustomer(2, customer).contains(Integer.toString(customer))){
             System.out.println("Test 4 - 2 failed");
         }
+        addACustomer(1, 23);
+        if(!queryCustomer(2, 23).contains(Integer.toString(23))){
+            System.out.println("Test 4 - 3 failed");
+        }
+        if(addACustomer(1, 23)){
+            System.out.println("Test 4 - 4 failed");
+        }
+        deleteACustomer(1, 23);
         System.out.println("Test 4 passed");
 
         //Test 5: Add a customer, book a car, a room and flight
@@ -121,7 +96,7 @@ public class ClientTest
         if(queryARoomLocation(3, "Toronto")!= 4){
             System.out.println("Test 5 - 3 failed");
         }
-        System.out.println(queryCustomer(2, customer));
+
         deleteACustomer(2, customer);
         if(queryAFlight(1, 778) != 34){
             System.out.println("Test 5 - 4 failed");
@@ -173,6 +148,7 @@ public class ClientTest
         if(queryACarLocation(1, "Calgary") != 1){
             System.out.println("Test 6 - 8 failed");
         }
+        System.out.println("Test 6 passed");
 
         deleteACustomer(1, customer);
         deleteAFlight(1, 1);
@@ -185,7 +161,8 @@ public class ClientTest
 
     private static void addAFlight(int id, int flightNum, int flightSeats, int flightPrice){
         try{
-            rm.addFlight(id,flightNum,flightSeats,flightPrice);
+            sendRequestToMiddleware(
+                    "addFlight,"+String.valueOf(flightNum)+","+String.valueOf(flightSeats)+","+String.valueOf(flightPrice));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -197,7 +174,8 @@ public class ClientTest
     private static int queryAFlight(int id, int flightNum){
         int seats = -1;
         try{
-            seats=rm.queryFlight(id,flightNum);
+            seats = Integer.parseInt(sendRequestToMiddleware(
+                    "queryFlight,"+String.valueOf(flightNum)));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -210,7 +188,8 @@ public class ClientTest
     private static int queryAFlightPrice(int id, int flightNum){
         int price = -1;
         try{
-            price=rm.queryFlightPrice(id,flightNum);
+            price = Integer.parseInt(sendRequestToMiddleware(
+                    "queryFlightPrice,"+String.valueOf(flightNum)));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -222,7 +201,8 @@ public class ClientTest
 
     private static void deleteAFlight(int id, int flightNum){
         try{
-            rm.deleteFlight(id,flightNum);
+            sendRequestToMiddleware(
+                    "deleteFlight,"+String.valueOf(flightNum));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -233,7 +213,8 @@ public class ClientTest
 
     private static void addACar(int id, String location, int numCars, int price){
         try{
-            rm.addCars(id,location,numCars,price);
+            sendRequestToMiddleware(
+                    "addCars,"+location+","+String.valueOf(numCars)+","+String.valueOf(price));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -245,7 +226,8 @@ public class ClientTest
     private static int queryACarLocation(int id, String location){
         int numCars = -1;
         try{
-            numCars=rm.queryCars(id,location);
+            numCars = Integer.parseInt(sendRequestToMiddleware(
+                    "queryCars,"+location));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -258,7 +240,8 @@ public class ClientTest
     private static int queryACarPrice(int id, String location){
         int price = -1;
         try{
-            price=rm.queryCarsPrice(id,location);
+            price = Integer.parseInt(sendRequestToMiddleware(
+                    "queryCarsPrice,"+location));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -270,8 +253,8 @@ public class ClientTest
 
     private static void deleteACar(int id, String location){
         try{
-
-            rm.deleteCars(id,location);
+            sendRequestToMiddleware(
+                    "deleteCars,"+location);
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -282,7 +265,8 @@ public class ClientTest
 
     private static void addARoom(int id, String location, int numRooms, int price){
         try{
-            rm.addRooms(id,location,numRooms,price);
+            sendRequestToMiddleware(
+                    "addRooms,"+location+","+String.valueOf(numRooms)+","+String.valueOf(price));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -293,7 +277,8 @@ public class ClientTest
 
     private static void deleteARoom(int id, String location){
         try{
-            rm.deleteRooms(id,location);
+            sendRequestToMiddleware(
+                    "deleteRooms,"+location);
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -305,7 +290,8 @@ public class ClientTest
     private static int queryARoomLocation(int id, String location) {
         int numRooms = -1;
         try{
-            numRooms=rm.queryRooms(id,location);
+            numRooms = Integer.parseInt(sendRequestToMiddleware(
+                    "queryRooms,"+location));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -318,7 +304,8 @@ public class ClientTest
     private static int queryARoomPrice(int id, String location){
         int price = -1;
         try{
-            price=rm.queryRoomsPrice(id,location);
+            price = Integer.parseInt(sendRequestToMiddleware(
+                    "queryRoomsPrice,"+location));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -331,7 +318,8 @@ public class ClientTest
     private static int addACustomer(int id){
         int customerId = -1;
         try{
-            customerId =rm.newCustomer(id);
+            customerId = Integer.parseInt(sendRequestToMiddleware(
+                    "newCustomer"));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -341,9 +329,24 @@ public class ClientTest
         return customerId;
     }
 
+    private static boolean addACustomer(int id, int cid){
+        boolean result = false;
+        try{
+            result = Boolean.valueOf(sendRequestToMiddleware(
+                    "newCustomer,"+String.valueOf(cid)));
+        }
+        catch(Exception e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            e.printStackTrace();
+        }
+        return result;
+    }
+
     private static void deleteACustomer(int id, int customer){
         try{
-            rm.deleteCustomer(id, customer);
+            sendRequestToMiddleware(
+                    "deleteCustomer,"+String.valueOf(customer));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -355,7 +358,8 @@ public class ClientTest
     private static String queryCustomer(int id, int customer){
         String bill = "";
         try{
-            bill=rm.queryCustomerInfo(id, customer);
+            bill = sendRequestToMiddleware(
+                    "queryCustomerInfo,"+String.valueOf(customer));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -367,7 +371,8 @@ public class ClientTest
 
     private static void reserveAFlight(int id, int customer, int flightNum){
         try{
-            rm.reserveFlight(id,customer,flightNum);
+            sendRequestToMiddleware(
+                    "reserveFlight,"+String.valueOf(customer)+","+String.valueOf(flightNum));
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -378,7 +383,8 @@ public class ClientTest
 
     private static void reserveACar(int id, int customer, String location){
         try{
-            rm.reserveCar(id,customer,location);
+            sendRequestToMiddleware(
+                    "reserveCar,"+String.valueOf(customer)+","+location);
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -389,7 +395,8 @@ public class ClientTest
 
     private static void reserveARoom(int id, int customer, String location){
         try{
-            rm.reserveRoom(id, customer, location);
+            sendRequestToMiddleware(
+                    "reserveRoom,"+String.valueOf(customer)+","+location);
         }
         catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -400,11 +407,35 @@ public class ClientTest
 
     private static void reserveItinerary(int id, int customer, Vector flightNumbers, String location, boolean hasCar, boolean hasRoom){
         try{
-            rm.itinerary(id, customer, flightNumbers, location, hasCar, hasRoom);
+            String request = "itinerary,"+String.valueOf(customer)+",";
+            for(Object flightNumber: flightNumbers){
+                request += flightNumber+",";
+            }
+            request += location +","+ String.valueOf(hasCar)+","+String.valueOf(hasRoom);
+            sendRequestToMiddleware(request);
         }catch (Exception e){
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private static String sendRequestToMiddleware(String request){
+        PrintWriter outToServer;
+        BufferedReader inFromServer;
+        String res = "";
+        try {
+            Socket socket = new Socket(serverName, port);
+            outToServer = new PrintWriter(socket.getOutputStream(), true);
+            inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            outToServer.println(request);
+            res = inFromServer.readLine();
+        } catch(Exception e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            e.printStackTrace();
+        }
+
+        return res;
     }
 }
