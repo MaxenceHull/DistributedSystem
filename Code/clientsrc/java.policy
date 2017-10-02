@@ -1,4 +1,4 @@
-grant codeBase "file:/Users/maxencehull/Documents/Courses/COMP512/Project/Code/clientsrc/" {
+grant codeBase "file:/home/2016/mhull2/COMP512/Code/clientsrc/" {
     permission java.security.AllPermission;
 };
 

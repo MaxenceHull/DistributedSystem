@@ -33,8 +33,7 @@ public class MiddlewareServer {
             Socket socket = serverSocket.accept();
             try {
                 BufferedReader inFromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                String message = null;
-                while ((message = inFromClient.readLine()) != null) {
+                String message = inFromClient.readLine();
 
                     System.out.println("message:" + message);
                     String[] params = message.split(",");
@@ -82,7 +81,7 @@ public class MiddlewareServer {
                     }
 
 
-                }
+                System.out.println("Request done:" + message);
             } catch (IOException e) {
 
             }

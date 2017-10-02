@@ -436,7 +436,8 @@ public class MiddlewareManagerImpl implements ResourceManager
             Vector flightResults = new Vector(flightNumbers.size());
             boolean carResult = true, roomResult = true;
             for(Object flightNumber: flightNumbers){
-                flightResults.add(rmFlight.reserveFlight(id, customer, (int)flightNumber));
+                String flightNumberString = String.valueOf(flightNumber);
+                flightResults.add(rmFlight.reserveFlight(id, customer, Integer.parseInt(flightNumberString)));
             }
             if(Car){
                 carResult = rmCar.reserveCar(id, customer, location);
@@ -450,7 +451,8 @@ public class MiddlewareManagerImpl implements ResourceManager
                 // Cancel all reservations
                 for(int i=0; i < flightNumbers.size(); i++){
                     if((boolean)flightResults.get(i)){
-                        rmFlight.cancelFlight(id, customer, (int)flightNumbers.get(i));
+                        String flightNumberString = String.valueOf(flightNumbers.get(i));
+                        rmFlight.cancelFlight(id, customer, Integer.parseInt(flightNumberString));
                     }
                 }
                 if(Car && carResult){
