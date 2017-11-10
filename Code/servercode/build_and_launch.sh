@@ -14,5 +14,5 @@ javac ResImpl/ResourceManagerImpl.java
 # chmod -R 777 /Users/maxencehull/Documents/Courses/COMP512/Project/Code/servercode
 
 echo Run Server
-#java -Djava.security.policy=java.policy -Djava.rmi.server.codebase=file:/Users/maxencehull/Documents/Courses/COMP512/Project/Code/servercode/ ResImpl.ResourceManagerImpl 1099 $1
-java -Djava.security.policy=java.policy -Djava.rmi.server.codebase=file:/home/2016/mhull2/COMP512/Code/servercode/ ResImpl.ResourceManagerImpl 1099 $1
+java -Djava.security.policy=java.policy -Djava.rmi.server.codebase=file:/Users/maxencehull/Documents/Courses/COMP512/Project/Code/servercode/ ResImpl.ResourceManagerImpl 1099 $1
+#java -Djava.security.policy=java.policy -Djava.rmi.server.codebase=file:/home/2016/mhull2/COMP512/Code/servercode/ ResImpl.ResourceManagerImpl 1099 $1

@@ -36,7 +36,12 @@ public class XObj
         if (xobj == null) return false;
         
         if (xobj instanceof XObj) {
-            if (this.xid == ((XObj)xobj).getXId()) {
+            System.out.println("Equals 1");
+            System.out.println(this.xid);
+            int _id = ((XObj)xobj).getXId();
+            System.out.println(_id);
+            if (this.xid == _id) {
+                System.out.println("Equals");
                 return true;
             }
         }

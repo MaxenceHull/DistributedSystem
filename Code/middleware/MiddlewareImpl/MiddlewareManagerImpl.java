@@ -100,6 +100,7 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNum), DataObj.WRITE)){
             try{
@@ -480,7 +481,7 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean commit(int id) throws RemoteException, InvalidTransactionException, TransactionAbortedException {
-        return false;
+        return transactionManager.commit(id);
     }
 
     @Override

@@ -557,4 +557,24 @@ public class ResourceManagerImpl implements ResourceManager
         return false;
     }
 
+    @Override
+    public int start() throws RemoteException {
+        return -1;
+    }
+
+    @Override
+    public boolean commit(int id) throws RemoteException, InvalidTransactionException, TransactionAbortedException {
+        return false;
+    }
+
+    @Override
+    public void abort(int id) throws RemoteException, InvalidTransactionException {
+
+    }
+
+    @Override
+    public boolean shutdown() throws RemoteException {
+        return false;
+    }
+
 }

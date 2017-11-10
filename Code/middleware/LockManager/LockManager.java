@@ -62,15 +62,20 @@ public class LockManager
                         }
                          
                         if (bConvert.get(0) == true) {
+                            System.out.println("Lock upgrade needed!");
                             // lock conversion 
                             // *** ADD CODE HERE *** to carry out the lock conversion in the
                             // lock table
-                            synchronized (this.lockTable){
-                                DataObj temp_data = (DataObj) this.lockTable.get(dataObj);
-                                temp_data.setLockType(DataObj.WRITE);
-                                TrxnObj temp_trx = (TrxnObj) this.lockTable.get(trxnObj);
-                                temp_trx.setLockType(TrxnObj.WRITE);
+                            if(this.lockTable.get(dataObj) == null){
+                                System.out.println("Data obj does not exist!");
+                            } else {
+                                System.out.println("Data obj exists!");
+                                System.out.println(dataObj.toString());
                             }
+                            DataObj temp_data = (DataObj) this.lockTable.get(dataObj);
+                            temp_data.setLockType(DataObj.WRITE);
+                            TrxnObj temp_trx = (TrxnObj) this.lockTable.get(trxnObj);
+                            temp_trx.setLockType(TrxnObj.WRITE);
                         } else {
                             // a lock request that is not lock conversion
                             this.lockTable.add(trxnObj);
