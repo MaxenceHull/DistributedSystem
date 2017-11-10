@@ -4,7 +4,9 @@
 //
 package MiddlewareImpl;
 
+import LockManager.DataObj;
 import ResInterface.*;
+import TransactionManager.TransactionManager;
 
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
@@ -12,18 +14,13 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Vector;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class MiddlewareManagerImpl implements ResourceManager
 {
     static ResourceManager rmFlight = null;
     static ResourceManager rmCar = null;
     static ResourceManager rmRoom = null;
-
-    private ReentrantLock lockFlight = new ReentrantLock();
-    private ReentrantLock lockRoom = new ReentrantLock();
-    private ReentrantLock lockCar = new ReentrantLock();
-
+    static TransactionManager transactionManager = null;
 
     public static void main(String args[]) {
         //Set up the server
@@ -62,6 +59,10 @@ public class MiddlewareManagerImpl implements ResourceManager
         if (System.getSecurityManager() == null) {
             System.setSecurityManager(new RMISecurityManager());
         }
+
+        //Create the transaction manager
+        transactionManager = new TransactionManager();
+
     }
 
     public static ResourceManager connectToAResourceManager(String server, int port, String registeryName)
@@ -98,60 +99,56 @@ public class MiddlewareManagerImpl implements ResourceManager
 
 
     @Override
-    public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException {
-        lockFlight.lock();
+    public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         boolean result = false;
-        try{
-            result = rmFlight.addFlight(id,flightNum,flightSeats,flightPrice);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        } finally {
-            lockFlight.unlock();
+        if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNum), DataObj.WRITE)){
+            try{
+                result = rmFlight.addFlight(id,flightNum,flightSeats,flightPrice);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return result;
     }
 
     @Override
-    public boolean addCars(int id, String location, int numCars, int price) throws RemoteException {
+    public boolean addCars(int id, String location, int numCars, int price) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         boolean result = false;
-        lockCar.lock();
-        try{
-            result = rmCar.addCars(id,location,numCars,price);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        } finally {
-            lockCar.unlock();
+        if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.WRITE)){
+            try{
+                result = rmCar.addCars(id,location,numCars,price);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return result;
     }
 
     @Override
-    public boolean addRooms(int id, String location, int numRooms, int price) throws RemoteException {
+    public boolean addRooms(int id, String location, int numRooms, int price) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         boolean result = false;
-        lockRoom.lock();
-        try{
-            result = rmRoom.addRooms(id,location,numRooms,price);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        } finally {
-            lockRoom.unlock();
+        if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.WRITE)){
+            try{
+                result = rmRoom.addRooms(id,location,numRooms,price);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return result;
     }
 
     @Override
-    public int newCustomer(int id) throws RemoteException {
+    public int newCustomer(int id) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         int customerId = -1;
-        lockEverything();
         try{
             customerId =rmFlight.newCustomer(id);
             rmRoom.newCustomer(id, customerId);
@@ -161,255 +158,263 @@ public class MiddlewareManagerImpl implements ResourceManager
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
-        } finally {
-            unlockEverything();
         }
+        transactionManager.lock(id, TransactionManager.getKeyCustomer(customerId), DataObj.WRITE);
         return customerId;
     }
 
     @Override
-    public boolean newCustomer(int id, int cid) throws RemoteException {
+    public boolean newCustomer(int id, int cid) throws RemoteException, TransactionAbortedException, InvalidTransactionException{
         boolean result = false;
-        lockEverything();
-        try {
-            result = rmFlight.newCustomer(id, cid) &&
-                    rmRoom.newCustomer(id, cid) &&
-                    rmCar.newCustomer(id, cid);
-        } catch(Exception e) {
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        } finally {
-            unlockEverything();
+        if(transactionManager.lock(id, TransactionManager.getKeyCustomer(cid), DataObj.WRITE)){
+            try{
+                result = rmFlight.newCustomer(id, cid) &&
+                        rmRoom.newCustomer(id, cid) &&
+                        rmCar.newCustomer(id, cid);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return result;
     }
 
     @Override
-    public boolean deleteFlight(int id, int flightNum) throws RemoteException {
+    public boolean deleteFlight(int id, int flightNum) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         boolean result = false;
-        lockFlight.lock();
-        try{
-            result = rmFlight.deleteFlight(id,flightNum);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        } finally {
-            lockFlight.unlock();
+        if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNum), DataObj.WRITE)){
+            try{
+                result = rmFlight.deleteFlight(id,flightNum);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return result;
     }
 
     @Override
-    public boolean deleteCars(int id, String location) throws RemoteException {
+    public boolean deleteCars(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         boolean result = false;
-        lockCar.lock();
-        try{
-
-            result = rmCar.deleteCars(id,location);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        } finally {
-            lockCar.unlock();
+        if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.WRITE)){
+            try{
+                result = rmCar.deleteCars(id,location);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return result;
     }
 
     @Override
-    public boolean deleteRooms(int id, String location) throws RemoteException {
+    public boolean deleteRooms(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         boolean result = false;
-        lockRoom.lock();
-        try{
-            result = rmRoom.deleteRooms(id,location);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        } finally {
-            lockRoom.unlock();
+        if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.WRITE)){
+            try{
+                result = rmRoom.deleteRooms(id,location);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return result;
     }
 
     @Override
-    public boolean deleteCustomer(int id, int customer) throws RemoteException {
+    public boolean deleteCustomer(int id, int customer) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         boolean result = false;
-        lockEverything();
-        try{
-            result = rmFlight.deleteCustomer(id, customer) &&
-                    rmCar.deleteCustomer(id, customer) &&
-                    rmRoom.deleteCustomer(id, customer);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        }finally {
-            unlockEverything();
+        if(transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
+            try{
+                result = rmFlight.deleteCustomer(id, customer) &&
+                        rmCar.deleteCustomer(id, customer) &&
+                        rmRoom.deleteCustomer(id, customer);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return result;
     }
 
     @Override
-    public int queryFlight(int id, int flightNumber) throws RemoteException {
+    public int queryFlight(int id, int flightNumber) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         int seats = -1;
-        try{
-            seats=rmFlight.queryFlight(id,flightNumber);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
+        if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNumber), DataObj.READ)){
+            try{
+                seats=rmFlight.queryFlight(id,flightNumber);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return seats;
     }
 
     @Override
-    public int queryCars(int id, String location) throws RemoteException {
+    public int queryCars(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         int numCars = -1;
-        try{
-            numCars=rmCar.queryCars(id,location);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
+        if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.READ)){
+            try{
+                numCars=rmCar.queryCars(id,location);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return numCars;
     }
 
     @Override
-    public int queryRooms(int id, String location) throws RemoteException {
+    public int queryRooms(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         int numRooms = -1;
-        try{
-            numRooms=rmRoom.queryRooms(id,location);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
+        if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.READ)){
+            try{
+                numRooms=rmRoom.queryRooms(id,location);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return numRooms;
     }
 
     @Override
-    public String queryCustomerInfo(int id, int customer) throws RemoteException {
+    public String queryCustomerInfo(int id, int customer) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         String bill = "";
-        try{
-            bill+=rmFlight.queryCustomerInfo(id, customer);
-            String lines[] =rmCar.queryCustomerInfo(id, customer).split("\\r?\\n");
-            if (lines.length > 1 ){
-                bill += lines[1] + "\n";
+        if(transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.READ)){
+            try{
+                bill+=rmFlight.queryCustomerInfo(id, customer);
+                String lines[] =rmCar.queryCustomerInfo(id, customer).split("\\r?\\n");
+                if (lines.length > 1 ){
+                    bill += lines[1] + "\n";
+                }
+                lines =rmRoom.queryCustomerInfo(id, customer).split("\\r?\\n");
+                if (lines.length > 1 ){
+                    bill += lines[1];
+                }
             }
-            lines =rmRoom.queryCustomerInfo(id, customer).split("\\r?\\n");
-            if (lines.length > 1 ){
-                bill += lines[1];
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
         }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        }
-        //If the bill is not empty, then add the header
         return bill;
     }
 
     @Override
-    public int queryFlightPrice(int id, int flightNumber) throws RemoteException {
+    public int queryFlightPrice(int id, int flightNumber) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         int price = -1;
-        try{
-            price=rmFlight.queryFlightPrice(id, flightNumber);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
+        if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNumber), DataObj.READ)){
+            try{
+                price=rmFlight.queryFlightPrice(id, flightNumber);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return price;
     }
 
     @Override
-    public int queryCarsPrice(int id, String location) throws RemoteException {
+    public int queryCarsPrice(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         int price = -1;
-        try{
-            price=rmCar.queryCarsPrice(id,location);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
+        if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.READ)){
+            try{
+                price=rmCar.queryCarsPrice(id,location);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return price;
     }
 
     @Override
-    public int queryRoomsPrice(int id, String location) throws RemoteException {
+    public int queryRoomsPrice(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         int price = -1;
-        try{
-            price=rmRoom.queryRoomsPrice(id,location);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
+        if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.READ)){
+            try{
+                price=rmRoom.queryRoomsPrice(id,location);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return price;
     }
 
     @Override
-    public boolean reserveFlight(int id, int customer, int flightNumber) throws RemoteException {
+    public boolean reserveFlight(int id, int customer, int flightNumber) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         boolean result = false;
-        lockFlight.lock();
-        try{
-            result = rmFlight.reserveFlight(id,customer,flightNumber);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        }finally {
-            lockFlight.unlock();
+        if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNumber), DataObj.WRITE) &&
+                transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
+            try{
+                result = rmFlight.reserveFlight(id,customer,flightNumber);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return result;
     }
 
     @Override
-    public boolean reserveCar(int id, int customer, String location) throws RemoteException {
+    public boolean reserveCar(int id, int customer, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         boolean result = false;
-        lockCar.lock();
-        try{
-            result = rmCar.reserveCar(id,customer,location);
+        if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.WRITE) &&
+                transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
+            try{
+                result = rmCar.reserveCar(id,customer,location);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        }finally {
-            lockCar.unlock();
-        }
+
         return result;
     }
 
     @Override
-    public boolean reserveRoom(int id, int customer, String locationd) throws RemoteException {
+    public boolean reserveRoom(int id, int customer, String locationd) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         boolean result = false;
-        lockRoom.lock();
-        try{
-            result = rmRoom.reserveRoom(id, customer, locationd);
-        }
-        catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        }finally {
-            lockRoom.unlock();
+        if(transactionManager.lock(id, TransactionManager.getKeyRoom(locationd), DataObj.WRITE) &&
+                transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
+            try{
+                result = rmRoom.reserveRoom(id, customer, locationd);
+            }
+            catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
         return result;
     }
@@ -430,9 +435,8 @@ public class MiddlewareManagerImpl implements ResourceManager
     }
 
     @Override
-    public boolean itinerary(int id, int customer, Vector flightNumbers, String location, boolean Car, boolean Room) throws RemoteException {
-        lockEverything();
-        try {
+    public boolean itinerary(int id, int customer, Vector flightNumbers, String location, boolean Car, boolean Room) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        //try {
             Vector flightResults = new Vector(flightNumbers.size());
             boolean carResult = true, roomResult = true;
             for(Object flightNumber: flightNumbers){
@@ -447,7 +451,7 @@ public class MiddlewareManagerImpl implements ResourceManager
             }
 
             // Verify if a reservation has not been made
-            if (flightResults.contains(false) || !carResult || !roomResult) {
+            /*if (flightResults.contains(false) || !carResult || !roomResult) {
                 // Cancel all reservations
                 for(int i=0; i < flightNumbers.size(); i++){
                     if((boolean)flightResults.get(i)){
@@ -463,23 +467,31 @@ public class MiddlewareManagerImpl implements ResourceManager
                 }
 
                 return false;
-            }
+            }*/
             return true;
-        } finally {
-            unlockEverything();
-        }
+        //}
 
     }
 
-    private void lockEverything(){
-        lockRoom.lock();
-        lockCar.lock();
-        lockFlight.lock();
+    @Override
+    public int start() throws RemoteException {
+        return transactionManager.start();
     }
 
-    private void unlockEverything(){
-        lockRoom.unlock();
-        lockCar.unlock();
-        lockFlight.unlock();
+    @Override
+    public boolean commit(int id) throws RemoteException, InvalidTransactionException, TransactionAbortedException {
+        return false;
     }
+
+    @Override
+    public void abort(int id) throws RemoteException, InvalidTransactionException {
+
+    }
+
+    @Override
+    public boolean shutdown() throws RemoteException {
+        return false;
+    }
+
+
 }
