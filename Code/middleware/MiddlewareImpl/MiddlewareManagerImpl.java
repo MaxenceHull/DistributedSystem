@@ -5,6 +5,7 @@
 package MiddlewareImpl;
 
 import LockManager.DataObj;
+import LockManager.TimeObj;
 import ResInterface.*;
 import TransactionManager.TransactionManager;
 
@@ -13,7 +14,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Vector;
+import java.util.*;
 
 public class MiddlewareManagerImpl implements ResourceManager
 {
@@ -21,6 +22,9 @@ public class MiddlewareManagerImpl implements ResourceManager
     static ResourceManager rmCar = null;
     static ResourceManager rmRoom = null;
     static TransactionManager transactionManager = null;
+
+    static Hashtable<Integer, Long> clientTime = new Hashtable<>();
+    static long timeout = 30000;
 
     public static void main(String args[]) {
         //Set up the server
@@ -100,7 +104,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
-
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNum), DataObj.WRITE)){
             try{
@@ -117,6 +124,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean addCars(int id, String location, int numCars, int price) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.WRITE)){
             try{
@@ -133,6 +144,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean addRooms(int id, String location, int numRooms, int price) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.WRITE)){
             try{
@@ -149,6 +164,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public int newCustomer(int id) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         int customerId = -1;
         try{
             customerId =rmFlight.newCustomer(id);
@@ -166,6 +185,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean newCustomer(int id, int cid) throws RemoteException, TransactionAbortedException, InvalidTransactionException{
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCustomer(cid), DataObj.WRITE)){
             try{
@@ -184,6 +207,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean deleteFlight(int id, int flightNum) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNum), DataObj.WRITE)){
             try{
@@ -200,6 +227,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean deleteCars(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.WRITE)){
             try{
@@ -216,6 +247,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean deleteRooms(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.WRITE)){
             try{
@@ -232,6 +267,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean deleteCustomer(int id, int customer) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
             try{
@@ -250,6 +289,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public int queryFlight(int id, int flightNumber) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         int seats = -1;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNumber), DataObj.READ)){
             try{
@@ -266,6 +309,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public int queryCars(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         int numCars = -1;
         if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.READ)){
             try{
@@ -282,6 +329,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public int queryRooms(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         int numRooms = -1;
         if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.READ)){
             try{
@@ -298,6 +349,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public String queryCustomerInfo(int id, int customer) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         String bill = "";
         if(transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.READ)){
             try{
@@ -322,6 +377,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public int queryFlightPrice(int id, int flightNumber) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         int price = -1;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNumber), DataObj.READ)){
             try{
@@ -338,6 +397,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public int queryCarsPrice(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         int price = -1;
         if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.READ)){
             try{
@@ -354,6 +417,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public int queryRoomsPrice(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         int price = -1;
         if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.READ)){
             try{
@@ -370,6 +437,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean reserveFlight(int id, int customer, int flightNumber) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNumber), DataObj.WRITE) &&
                 transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
@@ -387,6 +458,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean reserveCar(int id, int customer, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.WRITE) &&
                 transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
@@ -405,6 +480,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean reserveRoom(int id, int customer, String locationd) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)) {
+            resetTime(id);
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyRoom(locationd), DataObj.WRITE) &&
                 transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
@@ -437,6 +516,11 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public boolean itinerary(int id, int customer, Vector flightNumbers, String location, boolean Car, boolean Room) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)){
+            resetTime(id);
+        } // the case where the transaction has been aborted due to Client Timeout is
+        //notified to the client by the exception thrown when tries to lock with invalid Xid
         //try {
             Vector flightResults = new Vector(flightNumbers.size());
             boolean carResult = true, roomResult = true;
@@ -476,22 +560,75 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public int start() throws RemoteException {
-        return transactionManager.start();
+        checkOldTransactions();
+        int id = transactionManager.start();
+        System.out.println("started transaction : " + id);
+        resetTime(id);
+        return id;
     }
 
     @Override
     public boolean commit(int id) throws RemoteException, InvalidTransactionException, TransactionAbortedException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)){
+            clientTime.remove(id);
+        }
         return transactionManager.commit(id);
+
     }
 
     @Override
     public void abort(int id) throws RemoteException, InvalidTransactionException {
+        checkOldTransactions();
+        if (clientTime.containsKey(id)){
+            TransactionManager.transactions.remove(id);
+            clientTime.remove(id);
+            System.out.println("aborted transaction " + id);
+        }
 
     }
 
     @Override
     public boolean shutdown() throws RemoteException {
         return false;
+    }
+
+    public void resetTime(int id) {
+        Date date = new Date();
+        long timestamp = date.getTime();
+        clientTime.put(id, timestamp);
+        System.out.println("resetted time for "+id);
+    }
+
+    public void checkOldTransactions() {
+        Date date = new Date();
+        long time = date.getTime();
+        // create a list of id to remove from ClientTime
+        // and remove them after for loop
+        //otherwise, raise ConcurrentModificationException
+        List<Integer> oldTransactions = new ArrayList<>();
+        for (int id : clientTime.keySet()){
+            long timestamp = clientTime.get(id);
+            if (time - (timestamp + timeout) > 0) {
+                oldTransactions.add(id);
+            }
+        }
+        for (int id : oldTransactions){
+            try {
+                timeoutAbort(id);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            } catch (InvalidTransactionException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void timeoutAbort(int id) throws RemoteException, InvalidTransactionException {
+        //different than abort, in order to not return an irrelevant answer to a client when he makes a request
+        TransactionManager.transactions.remove(id);
+        clientTime.remove(id);
+        System.out.println("aborted transaction " + id + " due to time out from client");
     }
 
 
