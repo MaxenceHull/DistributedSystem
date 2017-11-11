@@ -161,6 +161,13 @@ public class ClientTestTransaction {
             e.printStackTrace();
         }
 
+        idTransaction2 = -1;
+        try {
+            idTransaction2 = rm.start();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+
         try {
             rm.queryFlight(idTransaction, 777);
         } catch (Exception e) {
@@ -247,5 +254,85 @@ public class ClientTestTransaction {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        //Test 5: Rollback
+        idTransaction = -1;
+        try {
+            idTransaction = rm.start();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+
+
+        try {
+            rm.addFlight(idTransaction, 900, 50, 345);
+            rm.addCars(idTransaction, "Montreal", 23, 145);
+            rm.addRooms(idTransaction, "Toronto", 2, 123);
+            int idCustomer = rm.newCustomer(idTransaction);
+            rm.reserveFlight(idTransaction, idCustomer, 900);
+            rm.reserveCar(idTransaction, idCustomer, "Montreal");
+            rm.reserveRoom(idTransaction, idCustomer, "Toronto");
+            rm.abort(idTransaction);
+            idTransaction = rm.start();
+            if(rm.queryFlightPrice(idTransaction, 900)!= 0 || rm.queryFlight(idTransaction, 900) != 0){
+                System.out.println("Test 5-1 failed");
+            }
+
+            if(rm.queryCars(idTransaction, "Montreal")!= 0 || rm.queryCarsPrice(idTransaction, "Montreal") != 0){
+                System.out.println("Test 5-2 failed");
+            }
+
+            if(rm.queryRooms(idTransaction, "Toronto")!= 0 || rm.queryRoomsPrice(idTransaction, "Toronto") != 0){
+                System.out.println("Test 5-3 failed");
+            }
+
+            System.out.println(rm.queryCustomerInfo(idTransaction, idCustomer));
+            if(!rm.queryCustomerInfo(idTransaction, idCustomer).equals("")){
+                System.out.println("Test 5-4 failed");
+            }
+            rm.commit(idTransaction);
+
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        } catch (InvalidTransactionException e) {
+            e.printStackTrace();
+        } catch (TransactionAbortedException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Test 5 passed");
+
+        //Test 6: Rollback customer
+        try {
+            idTransaction = rm.start();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            idTransaction = rm.start();
+            rm.addFlight(idTransaction, 900, 50, 345);
+            rm.addCars(idTransaction, "Montreal", 23, 145);
+            rm.addRooms(idTransaction, "Toronto", 2, 123);
+            int idCustomer = rm.newCustomer(idTransaction);
+            rm.reserveFlight(idTransaction, idCustomer, 900);
+            rm.reserveCar(idTransaction, idCustomer, "Montreal");
+            rm.reserveRoom(idTransaction, idCustomer, "Toronto");
+            rm.commit(idTransaction);
+            idTransaction = rm.start();
+            rm.deleteCustomer(idTransaction, idCustomer);
+            rm.abort(idTransaction);
+            idTransaction = rm.start();
+            System.out.println(rm.queryCustomerInfo(idTransaction, idCustomer));
+            if(rm.queryCustomerInfo(idTransaction, idCustomer).equals("")){
+                System.out.println("Test 6 failed");
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        } catch (InvalidTransactionException e) {
+            e.printStackTrace();
+        } catch (TransactionAbortedException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Test 6 passed");
     }
 }

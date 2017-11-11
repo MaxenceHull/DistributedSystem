@@ -7,12 +7,16 @@ package MiddlewareImpl;
 import LockManager.DataObj;
 import ResInterface.*;
 import TransactionManager.TransactionManager;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 
+import java.lang.reflect.InvocationTargetException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.HashMap;
+import java.util.Stack;
 import java.util.Vector;
 
 public class MiddlewareManagerImpl implements ResourceManager
@@ -94,7 +98,13 @@ public class MiddlewareManagerImpl implements ResourceManager
         return rm;
     }
 
+
+    private HashMap<Integer, Stack<Action>> actions;
+    private HashMap<Integer, Boolean> isRollback;
+
     public MiddlewareManagerImpl() throws RemoteException {
+        actions = new HashMap<>();
+        isRollback = new HashMap<>();
     }
 
 
@@ -104,12 +114,42 @@ public class MiddlewareManagerImpl implements ResourceManager
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNum), DataObj.WRITE)){
             try{
+                int oldPrice = rmFlight.queryFlightPrice(id, flightNum);
+                int oldSeats = rmFlight.queryFlight(id, flightNum);
                 result = rmFlight.addFlight(id,flightNum,flightSeats,flightPrice);
+                if(result && !isRollback.get(id)){
+                    if(oldPrice == 0 && oldSeats == 0){
+                        Object[] parameters = new Object[2];
+                        parameters[0] = id;
+                        parameters[1] = flightNum;
+                        Action action = new Action(
+                                this.getClass().getMethod("deleteFlight", int.class, int.class),
+                                parameters);
+                        actions.get(id).push(action);
+                    } else {
+                        Object[] parameters = new Object[4];
+                        parameters[0] = id;
+                        parameters[1] = flightNum;
+                        parameters[2] = -flightSeats;
+                        parameters[3] = oldPrice;
+                        Action action = new Action(
+                                this.getClass().getMethod("addFlight", int.class, int.class, int.class, int.class),
+                                parameters);
+                        actions.get(id).push(action);
+                    }
+                }
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
+            } catch (NoSuchMethodException e){
+
             }
         }
         return result;
@@ -120,12 +160,43 @@ public class MiddlewareManagerImpl implements ResourceManager
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.WRITE)){
             try{
+                int oldPrice = rmCar.queryCarsPrice(id, location);
+                int oldCars = rmCar.queryCars(id, location);
                 result = rmCar.addCars(id,location,numCars,price);
+                if(result && !isRollback.get(id)){
+                    if(oldPrice == 0 && oldCars == 0){
+                        Object[] parameters = new Object[2];
+                        parameters[0] = id;
+                        parameters[1] = location;
+                        Action action = new Action(
+                                this.getClass().getMethod("deleteCars", int.class, String.class),
+                                parameters);
+                        actions.get(id).push(action);
+                    } else {
+                        Object[] parameters = new Object[4];
+                        parameters[0] = id;
+                        parameters[1] = location;
+                        parameters[2] = -numCars;
+                        parameters[3] = oldPrice;
+                        Action action = new Action(
+                                this.getClass().getMethod("addCars", int.class, String.class, int.class, int.class),
+                                parameters);
+                        actions.get(id).push(action);
+
+                    }
+                }
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
+            } catch (NoSuchMethodException e){
+
             }
         }
         return result;
@@ -136,12 +207,43 @@ public class MiddlewareManagerImpl implements ResourceManager
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.WRITE)){
             try{
+                int oldPrice = rmRoom.queryRoomsPrice(id, location);
+                int oldRooms = rmRoom.queryRooms(id, location);
                 result = rmRoom.addRooms(id,location,numRooms,price);
+                if(result && !isRollback.get(id)){
+                    if(oldPrice == 0 && oldRooms == 0){
+                        Object[] parameters = new Object[2];
+                        parameters[0] = id;
+                        parameters[1] = location;
+                        Action action = new Action(
+                                this.getClass().getMethod("deleteRooms", int.class, String.class),
+                                parameters);
+                        actions.get(id).push(action);
+
+                    } else {
+                        Object[] parameters = new Object[4];
+                        parameters[0] = id;
+                        parameters[1] = location;
+                        parameters[2] = -numRooms;
+                        parameters[3] = oldPrice;
+                        Action action = new Action(
+                                this.getClass().getMethod("addRooms", int.class, String.class, int.class, int.class),
+                                parameters);
+                        actions.get(id).push(action);
+                    }
+                }
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
+            } catch (NoSuchMethodException e){
+
             }
         }
         return result;
@@ -160,7 +262,34 @@ public class MiddlewareManagerImpl implements ResourceManager
             System.out.println(e.getMessage());
             e.printStackTrace();
         }
-        transactionManager.lock(id, TransactionManager.getKeyCustomer(customerId), DataObj.WRITE);
+        try {
+            transactionManager.lock(id, TransactionManager.getKeyCustomer(customerId), DataObj.WRITE);
+        } catch(InvalidTransactionException e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            throw e;
+        } catch (TransactionAbortedException e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            abort(id);
+            throw e;
+        }
+
+        if(customerId != -1 && !isRollback.get(id)){
+            Object[] parameters = new Object[2];
+            parameters[0] = id;
+            parameters[1] = customerId;
+            Action action = null;
+            try {
+                action = new Action(
+                        this.getClass().getMethod("deleteCustomer", int.class, int.class),
+                        parameters);
+            } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+            }
+            actions.get(id).push(action);
+        }
+
         return customerId;
     }
 
@@ -172,11 +301,28 @@ public class MiddlewareManagerImpl implements ResourceManager
                 result = rmFlight.newCustomer(id, cid) &&
                         rmRoom.newCustomer(id, cid) &&
                         rmCar.newCustomer(id, cid);
+                if(result && !isRollback.get(id)){
+                    Object[] parameters = new Object[2];
+                    parameters[0] = id;
+                    parameters[1] = cid;
+                    Action action = new Action(
+                            this.getClass().getMethod("deleteCustomer", int.class, int.class),
+                            parameters);
+                    actions.get(id).push(action);
+
+                }
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
+            } catch (NoSuchMethodException e){
+
             }
         }
         return result;
@@ -187,12 +333,33 @@ public class MiddlewareManagerImpl implements ResourceManager
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNum), DataObj.WRITE)){
             try{
+                int oldSeats = queryFlight(id,flightNum);
+                int oldPrice = queryFlightPrice(id, flightNum);
                 result = rmFlight.deleteFlight(id,flightNum);
+                if(result && !isRollback.get(id)){
+                    Object[] parameters = new Object[4];
+                    parameters[0] = id;
+                    parameters[1] = flightNum;
+                    parameters[2] = oldSeats;
+                    parameters[3] = oldPrice;
+                    Action action = new Action(
+                            this.getClass().getMethod("addFlight", int.class, int.class, int.class, int.class),
+                            parameters);
+                    actions.get(id).push(action);
+
+                }
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
+            } catch (NoSuchMethodException e){
+
             }
         }
         return result;
@@ -203,12 +370,33 @@ public class MiddlewareManagerImpl implements ResourceManager
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.WRITE)){
             try{
+                int oldCars = queryCars(id, location);
+                int oldPrice = queryCarsPrice(id, location);
                 result = rmCar.deleteCars(id,location);
+                if(result && !isRollback.get(id)){
+                    Object[] parameters = new Object[4];
+                    parameters[0] = id;
+                    parameters[1] = location;
+                    parameters[2] = oldCars;
+                    parameters[3] = oldPrice;
+                    Action action = new Action(
+                            this.getClass().getMethod("addCars", int.class, String.class, int.class, int.class),
+                            parameters);
+                    actions.get(id).push(action);
+
+                }
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
+            } catch (NoSuchMethodException e){
+
             }
         }
         return result;
@@ -219,12 +407,34 @@ public class MiddlewareManagerImpl implements ResourceManager
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.WRITE)){
             try{
+                int oldRooms = queryRooms(id, location);
+                int oldPrice = queryRoomsPrice(id, location);
                 result = rmRoom.deleteRooms(id,location);
+                if(result && !isRollback.get(id)){
+                    Object[] parameters = new Object[4];
+                    parameters[0] = id;
+                    parameters[1] = location;
+                    parameters[2] = oldRooms;
+                    parameters[3] = oldPrice;
+                    Action action = new Action(
+                            this.getClass().getMethod("addRooms", int.class, String.class, int.class, int.class),
+                            parameters);
+                    actions.get(id).push(action);
+
+                }
+
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
+            } catch (NoSuchMethodException e){
+
             }
         }
         return result;
@@ -235,14 +445,34 @@ public class MiddlewareManagerImpl implements ResourceManager
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
             try{
+                if(!isRollback.get(id)){
+                    prepareRollbackCustomer(id, customer);
+                }
                 result = rmFlight.deleteCustomer(id, customer) &&
                         rmCar.deleteCustomer(id, customer) &&
                         rmRoom.deleteCustomer(id, customer);
+                if(result && !isRollback.get(id)){
+                    Object[] parameters = new Object[2];
+                    parameters[0] = id;
+                    parameters[1] = customer;
+                    Action action = new Action(
+                            this.getClass().getMethod("newCustomer", int.class, int.class),
+                            parameters);
+                    actions.get(id).push(action);
+
+                }
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
+            } catch (NoSuchMethodException e){
+
             }
         }
         return result;
@@ -255,10 +485,15 @@ public class MiddlewareManagerImpl implements ResourceManager
             try{
                 seats=rmFlight.queryFlight(id,flightNumber);
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
             }
         }
         return seats;
@@ -271,10 +506,15 @@ public class MiddlewareManagerImpl implements ResourceManager
             try{
                 numCars=rmCar.queryCars(id,location);
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
             }
         }
         return numCars;
@@ -287,10 +527,15 @@ public class MiddlewareManagerImpl implements ResourceManager
             try{
                 numRooms=rmRoom.queryRooms(id,location);
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
             }
         }
         return numRooms;
@@ -311,13 +556,70 @@ public class MiddlewareManagerImpl implements ResourceManager
                     bill += lines[1];
                 }
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
             }
         }
         return bill;
+    }
+
+    private void prepareRollbackCustomer(int id, int customer){
+        try {
+            String[] flights = rmFlight.queryCustomerInfo(id, customer).split("\n");
+            for(int i=1; i<flights.length; i++){
+                String[] data = flights[i].split(" ");
+                int flightNumber = Integer.parseInt(data[1].split("-")[1]);
+                Object[] parameters = new Object[3];
+                parameters[0] = id;
+                parameters[1] = customer;
+                parameters[2] = flightNumber;
+                Action action = new Action(
+                        this.getClass().getMethod("reserveFlight", int.class, int.class, int.class),
+                        parameters);
+                actions.get(id).push(action);
+                System.out.println(action.method.toString());
+            }
+
+            String[] rooms = rmRoom.queryCustomerInfo(id, customer).split("\n");
+            for(int i=1; i<rooms.length; i++){
+                String[] data = rooms[i].split(" ");
+                String location = data[1].split("-")[1];
+                Object[] parameters = new Object[3];
+                parameters[0] = id;
+                parameters[1] = customer;
+                parameters[2] = location;
+                Action action = new Action(
+                        this.getClass().getMethod("reserveRoom", int.class, int.class, String.class),
+                        parameters);
+                actions.get(id).push(action);
+                System.out.println(action.method.toString());
+            }
+
+            String[] cars = rmCar.queryCustomerInfo(id, customer).split("\n");
+            for(int i=1; i<cars.length; i++){
+                String[] data = cars[i].split(" ");
+                String location = data[1].split("-")[1];
+                Object[] parameters = new Object[3];
+                parameters[0] = id;
+                parameters[1] = customer;
+                parameters[2] = location;
+                Action action = new Action(
+                        this.getClass().getMethod("reserveCar", int.class, int.class, String.class),
+                        parameters);
+                actions.get(id).push(action);
+                System.out.println(action.method.toString());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -327,10 +629,15 @@ public class MiddlewareManagerImpl implements ResourceManager
             try{
                 price=rmFlight.queryFlightPrice(id, flightNumber);
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
             }
         }
         return price;
@@ -343,10 +650,15 @@ public class MiddlewareManagerImpl implements ResourceManager
             try{
                 price=rmCar.queryCarsPrice(id,location);
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
             }
         }
         return price;
@@ -359,10 +671,15 @@ public class MiddlewareManagerImpl implements ResourceManager
             try{
                 price=rmRoom.queryRoomsPrice(id,location);
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
             }
         }
         return price;
@@ -375,11 +692,29 @@ public class MiddlewareManagerImpl implements ResourceManager
                 transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
             try{
                 result = rmFlight.reserveFlight(id,customer,flightNumber);
+                if(result && !isRollback.get(id)){
+                    Object[] parameters = new Object[3];
+                    parameters[0] = id;
+                    parameters[1] = customer;
+                    parameters[2] = flightNumber;
+                    Action action = new Action(
+                            this.getClass().getMethod("cancelFlight", int.class, int.class, int.class),
+                            parameters);
+                    actions.get(id).push(action);
+
+                }
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
+            } catch (NoSuchMethodException e){
+
             }
         }
         return result;
@@ -392,11 +727,29 @@ public class MiddlewareManagerImpl implements ResourceManager
                 transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
             try{
                 result = rmCar.reserveCar(id,customer,location);
+                if(result && !isRollback.get(id)){
+                    Object[] parameters = new Object[3];
+                    parameters[0] = id;
+                    parameters[1] = customer;
+                    parameters[2] = location;
+                    Action action = new Action(
+                            this.getClass().getMethod("cancelCar", int.class, int.class, String.class),
+                            parameters);
+                    actions.get(id).push(action);
+
+                }
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
+            } catch (NoSuchMethodException e){
+
             }
         }
 
@@ -410,73 +763,139 @@ public class MiddlewareManagerImpl implements ResourceManager
                 transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
             try{
                 result = rmRoom.reserveRoom(id, customer, locationd);
+                if(result && !isRollback.get(id)){
+                    Object[] parameters = new Object[3];
+                    parameters[0] = id;
+                    parameters[1] = customer;
+                    parameters[2] = locationd;
+                    Action action = new Action(
+                            this.getClass().getMethod("cancelRoom", int.class, int.class, String.class),
+                            parameters);
+                    actions.get(id).push(action);
+
+                }
             }
-            catch(Exception e){
+            catch(InvalidTransactionException e){
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
-                e.printStackTrace();
+                throw e;
+            } catch (TransactionAbortedException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                abort(id);
+                throw e;
+            } catch (NoSuchMethodException e){
+
             }
         }
         return result;
     }
 
     @Override
-    public boolean cancelRoom(int id, int customer, String location) throws RemoteException {
-        return false;
+    public boolean cancelRoom(int id, int customer, String location) throws RemoteException, InvalidTransactionException, TransactionAbortedException {
+        return rmRoom.cancelRoom(id, customer, location);
+        //return false;
     }
 
     @Override
-    public boolean cancelFlight(int id, int customer, int flightNumber) throws RemoteException {
-        return false;
+    public boolean cancelFlight(int id, int customer, int flightNumber) throws RemoteException, InvalidTransactionException, TransactionAbortedException {
+        return rmFlight.cancelFlight(id, customer, flightNumber);
     }
 
     @Override
-    public boolean cancelCar(int id, int customer, String location) throws RemoteException {
-        return false;
+    public boolean cancelCar(int id, int customer, String location) throws RemoteException, InvalidTransactionException, TransactionAbortedException {
+        return rmCar.cancelCar(id, customer, location);
     }
 
     @Override
     public boolean itinerary(int id, int customer, Vector flightNumbers, String location, boolean Car, boolean Room) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
-        //try {
-            Vector flightResults = new Vector(flightNumbers.size());
-            boolean carResult = true, roomResult = true;
-            for(Object flightNumber: flightNumbers){
+
+        //Lock everything
+        for (Object flightNumber : flightNumbers) {
+            try{
+                transactionManager.lock(id, TransactionManager.getKeyFlight((int)flightNumber), DataObj.WRITE);
+            } catch (InvalidTransactionException e){
+                throw e;
+            } catch (TransactionAbortedException e){
+                abort(id);
+                throw e;
+            }
+        }
+
+        if(Car){
+            try{
+                transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.WRITE);
+            } catch (InvalidTransactionException e){
+                throw e;
+            } catch (TransactionAbortedException e){
+                abort(id);
+                throw e;
+            }
+        }
+
+        if(Room){
+            try{
+                transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.WRITE);
+            } catch (InvalidTransactionException e){
+                throw e;
+            } catch (TransactionAbortedException e){
+                abort(id);
+                throw e;
+            }
+        }
+        try{
+            for (Object flightNumber : flightNumbers) {
                 String flightNumberString = String.valueOf(flightNumber);
-                flightResults.add(rmFlight.reserveFlight(id, customer, Integer.parseInt(flightNumberString)));
-            }
-            if(Car){
-                carResult = rmCar.reserveCar(id, customer, location);
-            }
-            if(Room){
-                roomResult = rmRoom.reserveRoom(id, customer, location);
-            }
-
-            // Verify if a reservation has not been made
-            /*if (flightResults.contains(false) || !carResult || !roomResult) {
-                // Cancel all reservations
-                for(int i=0; i < flightNumbers.size(); i++){
-                    if((boolean)flightResults.get(i)){
-                        String flightNumberString = String.valueOf(flightNumbers.get(i));
-                        rmFlight.cancelFlight(id, customer, Integer.parseInt(flightNumberString));
-                    }
-                }
-                if(Car && carResult){
-                    rmCar.cancelCar(id, customer, location);
-                }
-                if(Room && roomResult){
-                    rmRoom.cancelRoom(id, customer, location);
+                if (rmFlight.reserveFlight(id, customer, Integer.parseInt(flightNumberString)) && !isRollback.get(id)) {
+                    Object[] parameters = new Object[3];
+                    parameters[0] = id;
+                    parameters[1] = customer;
+                    parameters[2] = Integer.parseInt(flightNumberString);
+                    Action action = new Action(
+                            this.getClass().getMethod("cancelFlight", int.class, int.class, int.class),
+                            parameters);
+                    actions.get(id).push(action);
                 }
 
-                return false;
-            }*/
-            return true;
-        //}
+            }
+            if (Car) {
+                if (rmCar.reserveCar(id, customer, location) && !isRollback.get(id)) {
+                    Object[] parameters = new Object[3];
+                    parameters[0] = id;
+                    parameters[1] = customer;
+                    parameters[2] = location;
+                    Action action = new Action(
+                            this.getClass().getMethod("cancelCar", int.class, int.class, String.class),
+                            parameters);
+                    actions.get(id).push(action);
+                }
+            }
+            if (Room) {
+                if (rmRoom.reserveRoom(id, customer, location) && !isRollback.get(id)) {
+                    Object[] parameters = new Object[3];
+                    parameters[0] = id;
+                    parameters[1] = customer;
+                    parameters[2] = location;
+                    Action action = new Action(
+                            this.getClass().getMethod("cancelRoom", int.class, int.class, String.class),
+                            parameters);
+                    actions.get(id).push(action);
+                }
+            }
+        }catch (NoSuchMethodException e){
+
+        }
+
+        return true;
 
     }
 
     @Override
     public int start() throws RemoteException {
-        return transactionManager.start();
+        int idTransaction = transactionManager.start();
+        actions.put(idTransaction, new Stack<>());
+        isRollback.put(idTransaction, false);
+        return idTransaction;
     }
 
     @Override
@@ -486,7 +905,20 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     @Override
     public void abort(int id) throws RemoteException, InvalidTransactionException {
-
+        isRollback.replace(id, true);
+        System.out.println("Rollback for transaction: "+id);
+        while (!actions.get(id).empty()){
+            Action action = actions.get(id).pop();
+            System.out.println("    "+action.method.toString());
+            try {
+                action.method.invoke(this, action.parameters);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
+        }
+        transactionManager.abort(id);
     }
 
     @Override

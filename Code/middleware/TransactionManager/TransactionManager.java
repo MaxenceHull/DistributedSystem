@@ -9,7 +9,7 @@ import LockManager.DeadlockException;
 import java.util.HashSet;
 
 public class TransactionManager {
-    static LockManager lockManager = null;
+    private LockManager lockManager = null;
     static int current_transaction_id;
     static HashSet<Integer> transactions;
 
@@ -42,6 +42,12 @@ public class TransactionManager {
             throw new TransactionAbortedException(transaction_id, "Deadlock state");
         }
         return result;
+    }
+
+    public void abort(int id){
+        lockManager.UnlockAll(id);
+        transactions.remove(id);
+
     }
 
     public static String getKeyCar( String location ) {
