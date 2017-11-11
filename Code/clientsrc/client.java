@@ -565,6 +565,61 @@ public class client
             e.printStackTrace();
             }
             break;
+
+            case 23:  //start
+                if (arguments.size()!=1){
+                obj.wrongNumber();
+                break;
+                }
+                System.out.println("starting new transaction");
+                try {
+                    Id = rm.start();
+                    System.out.println("transaction Id : " + Id);
+                }
+                catch(Exception e){
+                    System.out.println("Exception");
+                    System.out.println(e.getMessage());
+                    e.printStackTrace();
+                }
+                break;
+
+            case 24: //commit
+                if (arguments.size()!=2){
+                obj.wrongNumber();
+                break;
+                }
+                try {
+                    Id = obj.getInt(arguments.elementAt(1));
+                    System.out.println("committing transaction "+Id);
+                    if(rm.commit(Id)){
+                        System.out.println("transaction " + Id + " committed");
+                    }
+                } catch (Exception e) {
+                    System.out.println("Exception:");
+                    System.out.println(e.getMessage());
+                    e.printStackTrace();
+                }
+                break;
+
+            case 25: //abort
+                if (arguments.size()!=2){
+                obj.wrongNumber();
+                break;
+                }
+                try {
+                    Id = obj.getInt(arguments.elementAt(2));
+                    System.out.println("aborting transaction " + Id);
+                    rm.abort(Id);
+                    System.out.println("aborted transaction " + Id);
+                } catch (Exception e) {
+                    System.out.println("Exception:");
+                    System.out.println(e.getMessage());
+                    e.printStackTrace();
+                }
+                break;
+
+            case 26: //shutdown
+                break;
             
         default:
             System.out.println("The interface does not support this command.");
@@ -632,6 +687,14 @@ public class client
         return 21;
     else if (argument.compareToIgnoreCase("newcustomerid")==0)
         return 22;
+    else if (argument.compareToIgnoreCase("start")==0)
+        return 23;
+    else if (argument.compareToIgnoreCase("commit")==0)
+        return 24;
+    else if (argument.compareToIgnoreCase("abort")==0)
+        return 25;
+    else if (argument.compareToIgnoreCase("shutdown")==0)
+        return 26;
     else
         return 666;
 
