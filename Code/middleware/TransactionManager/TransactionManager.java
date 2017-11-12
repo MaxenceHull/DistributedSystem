@@ -70,5 +70,9 @@ public class TransactionManager {
         return s.toLowerCase();
     }
 
+    public boolean stillHasTransaction(){
+        return !transactions.isEmpty();
+    }
+
 
 }

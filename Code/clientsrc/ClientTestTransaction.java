@@ -335,4 +335,6 @@ public class ClientTestTransaction {
         }
         System.out.println("Test 6 passed");
     }
+
+    //Test 7: Itinerary
 }

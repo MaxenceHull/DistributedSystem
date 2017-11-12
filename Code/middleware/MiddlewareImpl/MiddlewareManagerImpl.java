@@ -7,7 +7,6 @@ package MiddlewareImpl;
 import LockManager.DataObj;
 import ResInterface.*;
 import TransactionManager.TransactionManager;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 
 import java.lang.reflect.InvocationTargetException;
 import java.rmi.RMISecurityManager;
@@ -922,8 +921,15 @@ public class MiddlewareManagerImpl implements ResourceManager
     }
 
     @Override
-    public boolean shutdown() throws RemoteException {
-        return false;
+    public void shutdown() throws RemoteException {
+        if(transactionManager.stillHasTransaction()){
+            return;
+        }
+
+        rmCar.shutdown();
+        rmFlight.shutdown();
+        rmRoom.shutdown();
+        System.exit(0);
     }
 
 
