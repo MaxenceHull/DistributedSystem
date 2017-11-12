@@ -11,7 +11,7 @@ import java.util.HashSet;
 public class TransactionManager {
     private LockManager lockManager = null;
     static int current_transaction_id;
-    static HashSet<Integer> transactions;
+    public static HashSet<Integer> transactions;
 
     public TransactionManager(){
         lockManager = new LockManager();
