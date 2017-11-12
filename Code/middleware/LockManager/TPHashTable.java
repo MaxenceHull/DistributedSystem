@@ -112,7 +112,6 @@ public class TPHashTable
 
         XObj xobj2;
         int size = vectSlot.size();
-        System.out.println("Size :"+size);
         for ( int i = 0; i < size; i++ ) {
             xobj2 = (XObj) vectSlot.elementAt(i);
             if ( xobj.getXId() == xobj2.getXId() ) {

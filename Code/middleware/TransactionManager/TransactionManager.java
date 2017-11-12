@@ -9,7 +9,7 @@ import LockManager.DeadlockException;
 import java.util.HashSet;
 
 public class TransactionManager {
-    LockManager lockManager = null;
+    private LockManager lockManager = null;
     static int current_transaction_id;
     public static HashSet<Integer> transactions;
 
@@ -44,6 +44,12 @@ public class TransactionManager {
         return result;
     }
 
+    public void abort(int id){
+        lockManager.UnlockAll(id);
+        transactions.remove(id);
+
+    }
+
     public static String getKeyCar( String location ) {
         String s = "car-" + location  ;
         return s.toLowerCase();
@@ -62,6 +68,10 @@ public class TransactionManager {
     public static String getKeyRoom( String location ) {
         String s = "room-" + location  ;
         return s.toLowerCase();
+    }
+
+    public boolean stillHasTransaction(){
+        return !transactions.isEmpty();
     }
 
 
