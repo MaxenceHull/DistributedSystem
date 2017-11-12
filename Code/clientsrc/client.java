@@ -607,7 +607,7 @@ public class client
                 break;
                 }
                 try {
-                    Id = obj.getInt(arguments.elementAt(2));
+                    Id = obj.getInt(arguments.elementAt(1));
                     System.out.println("aborting transaction " + Id);
                     rm.abort(Id);
                     System.out.println("aborted transaction " + Id);
@@ -619,7 +619,18 @@ public class client
                 break;
 
             case 26: //shutdown
-                break;
+                if (arguments.size()!=1){
+                    obj.wrongNumber();
+                    break;
+                }
+                try {
+                    rm.shutdown();
+                    System.out.println("Shutdown");
+                } catch (Exception e) {
+                    System.out.println("Exception:");
+                    System.out.println(e.getMessage());
+                    e.printStackTrace();
+                }
             
         default:
             System.out.println("The interface does not support this command.");

@@ -9,32 +9,31 @@ import LockManager.DeadlockException;
 import java.util.HashSet;
 
 public class TransactionManager {
-    private LockManager lockManager = null;
-    static int current_transaction_id;
-    public static HashSet<Integer> transactions;
+    static LockManager lockManager = new LockManager();
+    static int current_transaction_id = 0;
+    public static HashSet<Integer> transactions = new HashSet<>();;
 
-    public TransactionManager(){
-        lockManager = new LockManager();
-        transactions = new HashSet<>();
-        current_transaction_id = 0;
-    }
 
-    public int start(){
+    public synchronized int start(){
         current_transaction_id += 1;
         transactions.add(current_transaction_id);
         return current_transaction_id;
     }
 
     public boolean commit(int transaction_id) throws InvalidTransactionException, TransactionAbortedException {
-        if(!transactions.contains(transaction_id))
-            throw new InvalidTransactionException(transaction_id, "Transaction does not exist");
-        transactions.remove(transaction_id);
+        synchronized (this.transactions){
+            if(!transactions.contains(transaction_id))
+                throw new InvalidTransactionException(transaction_id, "Transaction does not exist");
+            transactions.remove(transaction_id);
+        }
         return lockManager.UnlockAll(transaction_id);
     }
 
     public boolean lock(int transaction_id, String strData, int lockType) throws TransactionAbortedException, InvalidTransactionException {
-        if(!transactions.contains(transaction_id))
-            throw new InvalidTransactionException(transaction_id, "Transaction does not exist");
+        synchronized (this.transactions){
+            if(!transactions.contains(transaction_id))
+                throw new InvalidTransactionException(transaction_id, "Transaction does not exist");
+        }
         boolean result;
         try {
             result = lockManager.Lock(transaction_id, strData, lockType);
@@ -46,8 +45,9 @@ public class TransactionManager {
 
     public void abort(int id){
         lockManager.UnlockAll(id);
-        transactions.remove(id);
-
+        synchronized (this.transactions){
+            transactions.remove(id);
+        }
     }
 
     public static String getKeyCar( String location ) {
@@ -71,7 +71,9 @@ public class TransactionManager {
     }
 
     public boolean stillHasTransaction(){
-        return !transactions.isEmpty();
+        synchronized (this.transactions){
+            return !transactions.isEmpty();
+        }
     }
 
 

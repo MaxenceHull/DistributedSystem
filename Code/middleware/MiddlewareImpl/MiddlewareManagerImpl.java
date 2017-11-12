@@ -5,9 +5,9 @@
 package MiddlewareImpl;
 
 import LockManager.DataObj;
-import LockManager.TimeObj;
 import ResInterface.*;
 import TransactionManager.TransactionManager;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 
 import java.lang.reflect.InvocationTargetException;
 import java.rmi.RMISecurityManager;
@@ -16,9 +16,9 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 
-import java.util.HashMap;
-import java.util.Stack;
-import java.util.Vector;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class MiddlewareManagerImpl implements ResourceManager
 {
@@ -26,9 +26,12 @@ public class MiddlewareManagerImpl implements ResourceManager
     static ResourceManager rmCar = null;
     static ResourceManager rmRoom = null;
     static TransactionManager transactionManager = null;
+    static ReentrantLock lockAbort = new ReentrantLock();
+    static ConcurrentHashMap<Integer, Long> clientTime = new ConcurrentHashMap<>();
+    static long timeout = 30000000;
 
-    static Hashtable<Integer, Long> clientTime = new Hashtable<>();
-    static long timeout = 30000;
+    private static ConcurrentHashMap<Integer, Stack<Action>> actions = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<Integer, Boolean> isRollback = new ConcurrentHashMap<>();
 
     public static void main(String args[]) {
         //Set up the server
@@ -100,15 +103,6 @@ public class MiddlewareManagerImpl implements ResourceManager
         }
 
         return rm;
-    }
-
-
-    private HashMap<Integer, Stack<Action>> actions;
-    private HashMap<Integer, Boolean> isRollback;
-
-    public MiddlewareManagerImpl() throws RemoteException {
-        actions = new HashMap<>();
-        isRollback = new HashMap<>();
     }
 
 
@@ -893,11 +887,13 @@ public class MiddlewareManagerImpl implements ResourceManager
             resetTime(id);
         } // the case where the transaction has been aborted due to Client Timeout is
         //notified to the client by the exception thrown when tries to lock with invalid Xid
-
+        ArrayList<Boolean> results = new ArrayList<>();
         //Lock everything
+        transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE);
         for (Object flightNumber : flightNumbers) {
             try{
-                transactionManager.lock(id, TransactionManager.getKeyFlight((int)flightNumber), DataObj.WRITE);
+                String flightNumberString = String.valueOf(flightNumber);
+                transactionManager.lock(id, TransactionManager.getKeyFlight(Integer.parseInt(flightNumberString)), DataObj.WRITE);
             } catch (InvalidTransactionException e){
                 throw e;
             } catch (TransactionAbortedException e){
@@ -930,7 +926,8 @@ public class MiddlewareManagerImpl implements ResourceManager
         try{
             for (Object flightNumber : flightNumbers) {
                 String flightNumberString = String.valueOf(flightNumber);
-                if (rmFlight.reserveFlight(id, customer, Integer.parseInt(flightNumberString)) && !isRollback.get(id)) {
+                results.add(rmFlight.reserveFlight(id, customer, Integer.parseInt(flightNumberString)));
+                if (results.get(results.size() - 1)) {
                     Object[] parameters = new Object[3];
                     parameters[0] = id;
                     parameters[1] = customer;
@@ -943,7 +940,8 @@ public class MiddlewareManagerImpl implements ResourceManager
 
             }
             if (Car) {
-                if (rmCar.reserveCar(id, customer, location) && !isRollback.get(id)) {
+                results.add(rmCar.reserveCar(id, customer, location));
+                if (results.get(results.size() - 1)) {
                     Object[] parameters = new Object[3];
                     parameters[0] = id;
                     parameters[1] = customer;
@@ -955,7 +953,8 @@ public class MiddlewareManagerImpl implements ResourceManager
                 }
             }
             if (Room) {
-                if (rmRoom.reserveRoom(id, customer, location) && !isRollback.get(id)) {
+                results.add(rmRoom.reserveRoom(id, customer, location));
+                if (results.get(results.size() - 1)) {
                     Object[] parameters = new Object[3];
                     parameters[0] = id;
                     parameters[1] = customer;
@@ -965,6 +964,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                             parameters);
                     actions.get(id).push(action);
                 }
+            }
+
+            if(results.contains(false)){
+                abort(id);
+                throw new TransactionAbortedException(id, "Item not available anymore, abort transaction");
             }
         }catch (NoSuchMethodException e){
 
@@ -980,7 +984,7 @@ public class MiddlewareManagerImpl implements ResourceManager
         int idTransaction = transactionManager.start();
         actions.put(idTransaction, new Stack<>());
         isRollback.put(idTransaction, false);
-        resetTime(id);
+        resetTime(idTransaction);
         return idTransaction;
     }
 
@@ -997,7 +1001,7 @@ public class MiddlewareManagerImpl implements ResourceManager
     @Override
     public void abort(int id) throws RemoteException, InvalidTransactionException {
 
-        checkOldTransactions();
+        //checkOldTransactions();
         if (clientTime.containsKey(id)){
             clientTime.remove(id);
         }
@@ -1034,10 +1038,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         Date date = new Date();
         long timestamp = date.getTime();
         clientTime.put(id, timestamp);
-        System.out.println("resetted time for "+id);
     }
 
-    public void checkOldTransactions() {
+    public synchronized void checkOldTransactions() {
         Date date = new Date();
         long time = date.getTime();
         // create a list of id to remove from ClientTime
@@ -1050,23 +1053,22 @@ public class MiddlewareManagerImpl implements ResourceManager
                 oldTransactions.add(id);
             }
         }
-        for (int id : oldTransactions){
-            try {
-                timeoutAbort(id);
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            } catch (InvalidTransactionException e) {
-                e.printStackTrace();
+        if(!oldTransactions.isEmpty()){
+            lockAbort.lock();
+            for (int id : oldTransactions){
+                try {
+                    abort(id);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                } catch (InvalidTransactionException e) {
+                    e.printStackTrace();
+                }
             }
+            lockAbort.unlock();
         }
+
     }
 
-    public void timeoutAbort(int id) throws RemoteException, InvalidTransactionException {
-        //different than abort, in order to not return an irrelevant answer to a client when he makes a request
-        TransactionManager.transactions.remove(id);
-        clientTime.remove(id);
-        System.out.println("aborted transaction " + id + " due to time out from client");
-    }
 
 
 }
