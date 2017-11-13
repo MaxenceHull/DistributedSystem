@@ -7,7 +7,6 @@ package MiddlewareImpl;
 import LockManager.DataObj;
 import ResInterface.*;
 import TransactionManager.TransactionManager;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 
 import java.lang.reflect.InvocationTargetException;
 import java.rmi.RMISecurityManager;
@@ -28,7 +27,7 @@ public class MiddlewareManagerImpl implements ResourceManager
     static TransactionManager transactionManager = null;
     static ReentrantLock lockAbort = new ReentrantLock();
     static ConcurrentHashMap<Integer, Long> clientTime = new ConcurrentHashMap<>();
-    static long timeout = 30000000;
+    static long timeout = 30000;
 
     private static ConcurrentHashMap<Integer, Stack<Action>> actions = new ConcurrentHashMap<>();
     private static ConcurrentHashMap<Integer, Boolean> isRollback = new ConcurrentHashMap<>();
@@ -475,6 +474,12 @@ public class MiddlewareManagerImpl implements ResourceManager
         if (clientTime.containsKey(id)) {
             resetTime(id);
         }
+
+        List<String> customerObjects = getObjectCustomer(id, customer);
+        for(String key: customerObjects){
+            transactionManager.lock(id, key, DataObj.WRITE);
+        }
+
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
             try{
@@ -598,11 +603,15 @@ public class MiddlewareManagerImpl implements ResourceManager
                 bill+=rmFlight.queryCustomerInfo(id, customer);
                 String lines[] =rmCar.queryCustomerInfo(id, customer).split("\\r?\\n");
                 if (lines.length > 1 ){
-                    bill += lines[1] + "\n";
+                    for(int i=1; i<lines.length; i++){
+                        bill += lines[i] + "\n";
+                    }
                 }
                 lines =rmRoom.queryCustomerInfo(id, customer).split("\\r?\\n");
                 if (lines.length > 1 ){
-                    bill += lines[1];
+                    for(int i=1; i<lines.length; i++){
+                        bill += lines[i] + "\n";
+                    }
                 }
             }
             catch(InvalidTransactionException e){
@@ -669,6 +678,33 @@ public class MiddlewareManagerImpl implements ResourceManager
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private List<String> getObjectCustomer(int id, int customer){
+        List<String> results = new ArrayList<>();
+        try {
+            String[] flights = rmFlight.queryCustomerInfo(id, customer).split("\n");
+            for(int i=1; i<flights.length; i++){
+                String[] data = flights[i].split(" ");
+                results.add(data[1]);
+            }
+
+            String[] rooms = rmRoom.queryCustomerInfo(id, customer).split("\n");
+            for(int i=1; i<rooms.length; i++){
+                String[] data = rooms[i].split(" ");
+                results.add(data[1]);
+            }
+
+            String[] cars = rmCar.queryCustomerInfo(id, customer).split("\n");
+            for(int i=1; i<cars.length; i++){
+                String[] data = cars[i].split(" ");
+                results.add(data[1]);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return results;
     }
 
     @Override
@@ -1023,15 +1059,32 @@ public class MiddlewareManagerImpl implements ResourceManager
     }
 
     @Override
-    public void shutdown() throws RemoteException {
+    public boolean shutdown() throws RemoteException {
+        checkOldTransactions();
+        System.out.println("Shutdown");
         if(transactionManager.stillHasTransaction()){
-            return;
+            System.out.println("No!");
+            return false;
+        }
+        try{
+            rmCar.shutdown();
+        } catch(Exception e){
+            System.out.println("RM Car shutdown");
+        }
+        try{
+            rmFlight.shutdown();
+        } catch(Exception e){
+            System.out.println("RM Flight shutdown");
         }
 
-        rmCar.shutdown();
-        rmFlight.shutdown();
-        rmRoom.shutdown();
+        try{
+            rmRoom.shutdown();
+        } catch(Exception e){
+            System.out.println("RM Room shutdown");
+        }
+
         System.exit(0);
+        return true;
     }
 
     public void resetTime(int id) {

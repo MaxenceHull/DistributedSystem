@@ -573,8 +573,9 @@ public class ResourceManagerImpl implements ResourceManager
     }
 
     @Override
-    public void shutdown() throws RemoteException {
+    public boolean shutdown() throws RemoteException {
         System.exit(0);
+        return true;
     }
 
 }

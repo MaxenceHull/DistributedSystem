@@ -627,10 +627,12 @@ public class client
                     rm.shutdown();
                     System.out.println("Shutdown");
                 } catch (Exception e) {
-                    System.out.println("Exception:");
-                    System.out.println(e.getMessage());
-                    e.printStackTrace();
+                    //System.out.println("Exception:");
+                    //System.out.println(e.getMessage());
+                    //e.printStackTrace();
+                    System.exit(0);
                 }
+                System.out.println("Shutdown impossible");
             
         default:
             System.out.println("The interface does not support this command.");

@@ -149,7 +149,7 @@ public interface ResourceManager extends Remote
 
     public void abort(int id) throws RemoteException, InvalidTransactionException;
 
-    public void shutdown() throws RemoteException;
+    public boolean shutdown() throws RemoteException;
 
 
     			
