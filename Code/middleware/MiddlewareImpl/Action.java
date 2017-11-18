@@ -1,18 +1,15 @@
 package MiddlewareImpl;
 
-import java.lang.reflect.Method;
+import java.io.Serializable;
 
-public class Action {
-    Method method;
+public class Action implements Serializable{
+    String method;
     Object[] parameters;
 
-    public Action(Method method, Object[] parameters){
+    public Action(String method, Object[] parameters){
         this.method = method;
         this.parameters = parameters;
     }
 
-    public Object[] getParameters() {
-        return parameters;
-    }
 
 }

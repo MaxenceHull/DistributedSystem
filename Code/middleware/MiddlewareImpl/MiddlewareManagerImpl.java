@@ -9,6 +9,7 @@ import ResInterface.*;
 import TransactionManager.TransactionManager;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -21,16 +22,19 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class MiddlewareManagerImpl implements ResourceManager
 {
+    static private boolean doBackupAtLaunch = true;
+
     static ResourceManager rmFlight = null;
     static ResourceManager rmCar = null;
     static ResourceManager rmRoom = null;
-    static TransactionManager transactionManager = null;
     static ReentrantLock lockAbort = new ReentrantLock();
-    static ConcurrentHashMap<Integer, Long> clientTime = new ConcurrentHashMap<>();
-    static long timeout = 30000;
 
-    private static ConcurrentHashMap<Integer, Stack<Action>> actions = new ConcurrentHashMap<>();
-    private static ConcurrentHashMap<Integer, Boolean> isRollback = new ConcurrentHashMap<>();
+    static long ttl = 3000000;
+
+    private TransactionManager transactionManager;
+
+    private HashMap<String, Method> methods;
+
 
     public static void main(String args[]) {
         //Set up the server
@@ -70,8 +74,7 @@ public class MiddlewareManagerImpl implements ResourceManager
             System.setSecurityManager(new RMISecurityManager());
         }
 
-        //Create the transaction manager
-        transactionManager = new TransactionManager();
+
 
     }
 
@@ -104,11 +107,43 @@ public class MiddlewareManagerImpl implements ResourceManager
         return rm;
     }
 
+    public MiddlewareManagerImpl(){
+        if(doBackupAtLaunch) {
+            TransactionManager tm = MiddlewareBackup.getBackup();
+            if(tm == null){
+                transactionManager = new TransactionManager();
+            } else {
+                transactionManager = tm;
+            }
+        }
+
+        methods = new HashMap<>();
+        try {
+            methods.put("deleteFlight", this.getClass().getMethod("deleteFlight", int.class, int.class));
+            methods.put("addFlight", this.getClass().getMethod("addFlight", int.class, int.class, int.class, int.class));
+            methods.put("deleteCars", this.getClass().getMethod("deleteCars", int.class, String.class));
+            methods.put("addCars", this.getClass().getMethod("addCars", int.class, String.class, int.class, int.class));
+            methods.put("deleteRooms", this.getClass().getMethod("deleteRooms", int.class, String.class));
+            methods.put("addRooms", this.getClass().getMethod("addRooms", int.class, String.class, int.class, int.class));
+            methods.put("deleteCustomer", this.getClass().getMethod("deleteCustomer", int.class, int.class));
+            methods.put("newCustomer", this.getClass().getMethod("newCustomer", int.class, int.class));
+            methods.put("reserveFlight", this.getClass().getMethod("reserveFlight", int.class, int.class, int.class));
+            methods.put("reserveRoom", this.getClass().getMethod("reserveRoom", int.class, int.class, String.class));
+            methods.put("reserveCar", this.getClass().getMethod("reserveCar", int.class, int.class, String.class));
+            methods.put("cancelFlight", this.getClass().getMethod("cancelFlight", int.class, int.class, int.class));
+            methods.put("cancelCar", this.getClass().getMethod("cancelCar", int.class, int.class, String.class));
+            methods.put("cancelRoom", this.getClass().getMethod("cancelRoom", int.class, int.class, String.class));
+        }catch (Exception e){
+
+        }
+
+    }
+
 
     @Override
     public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         boolean result = false;
@@ -117,25 +152,21 @@ public class MiddlewareManagerImpl implements ResourceManager
                 int oldPrice = rmFlight.queryFlightPrice(id, flightNum);
                 int oldSeats = rmFlight.queryFlight(id, flightNum);
                 result = rmFlight.addFlight(id,flightNum,flightSeats,flightPrice);
-                if(result && !isRollback.get(id)){
+                if(result && !transactionManager.isRollback.get(id)){
                     if(oldPrice == 0 && oldSeats == 0){
                         Object[] parameters = new Object[2];
                         parameters[0] = id;
                         parameters[1] = flightNum;
-                        Action action = new Action(
-                                this.getClass().getMethod("deleteFlight", int.class, int.class),
-                                parameters);
-                        actions.get(id).push(action);
+                        Action action = new Action("deleteFlight", parameters);
+                        transactionManager.actions.get(id).push(action);
                     } else {
                         Object[] parameters = new Object[4];
                         parameters[0] = id;
                         parameters[1] = flightNum;
                         parameters[2] = -flightSeats;
                         parameters[3] = oldPrice;
-                        Action action = new Action(
-                                this.getClass().getMethod("addFlight", int.class, int.class, int.class, int.class),
-                                parameters);
-                        actions.get(id).push(action);
+                        Action action = new Action("addFlight", parameters);
+                        transactionManager.actions.get(id).push(action);
                     }
                 }
             }
@@ -148,9 +179,9 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
-            } catch (NoSuchMethodException e){
-
             }
+
+            MiddlewareBackup.save(transactionManager);
         }
         return result;
     }
@@ -158,7 +189,7 @@ public class MiddlewareManagerImpl implements ResourceManager
     @Override
     public boolean addCars(int id, String location, int numCars, int price) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         boolean result = false;
@@ -167,25 +198,21 @@ public class MiddlewareManagerImpl implements ResourceManager
                 int oldPrice = rmCar.queryCarsPrice(id, location);
                 int oldCars = rmCar.queryCars(id, location);
                 result = rmCar.addCars(id,location,numCars,price);
-                if(result && !isRollback.get(id)){
+                if(result && !transactionManager.isRollback.get(id)){
                     if(oldPrice == 0 && oldCars == 0){
                         Object[] parameters = new Object[2];
                         parameters[0] = id;
                         parameters[1] = location;
-                        Action action = new Action(
-                                this.getClass().getMethod("deleteCars", int.class, String.class),
-                                parameters);
-                        actions.get(id).push(action);
+                        Action action = new Action("deleteCars", parameters);
+                        transactionManager.actions.get(id).push(action);
                     } else {
                         Object[] parameters = new Object[4];
                         parameters[0] = id;
                         parameters[1] = location;
                         parameters[2] = -numCars;
                         parameters[3] = oldPrice;
-                        Action action = new Action(
-                                this.getClass().getMethod("addCars", int.class, String.class, int.class, int.class),
-                                parameters);
-                        actions.get(id).push(action);
+                        Action action = new Action("addCars", parameters);
+                        transactionManager.actions.get(id).push(action);
 
                     }
                 }
@@ -199,9 +226,9 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
-            } catch (NoSuchMethodException e){
-
             }
+
+            MiddlewareBackup.save(transactionManager);
         }
         return result;
     }
@@ -209,7 +236,7 @@ public class MiddlewareManagerImpl implements ResourceManager
     @Override
     public boolean addRooms(int id, String location, int numRooms, int price) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         boolean result = false;
@@ -218,15 +245,13 @@ public class MiddlewareManagerImpl implements ResourceManager
                 int oldPrice = rmRoom.queryRoomsPrice(id, location);
                 int oldRooms = rmRoom.queryRooms(id, location);
                 result = rmRoom.addRooms(id,location,numRooms,price);
-                if(result && !isRollback.get(id)){
+                if(result && !transactionManager.isRollback.get(id)){
                     if(oldPrice == 0 && oldRooms == 0){
                         Object[] parameters = new Object[2];
                         parameters[0] = id;
                         parameters[1] = location;
-                        Action action = new Action(
-                                this.getClass().getMethod("deleteRooms", int.class, String.class),
-                                parameters);
-                        actions.get(id).push(action);
+                        Action action = new Action("deleteRooms", parameters);
+                        transactionManager.actions.get(id).push(action);
 
                     } else {
                         Object[] parameters = new Object[4];
@@ -234,10 +259,8 @@ public class MiddlewareManagerImpl implements ResourceManager
                         parameters[1] = location;
                         parameters[2] = -numRooms;
                         parameters[3] = oldPrice;
-                        Action action = new Action(
-                                this.getClass().getMethod("addRooms", int.class, String.class, int.class, int.class),
-                                parameters);
-                        actions.get(id).push(action);
+                        Action action = new Action("addRooms", parameters);
+                        transactionManager.actions.get(id).push(action);
                     }
                 }
             }
@@ -250,17 +273,16 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
-            } catch (NoSuchMethodException e){
-
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return result;
     }
 
     @Override
     public int newCustomer(int id) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         int customerId = -1;
@@ -287,28 +309,22 @@ public class MiddlewareManagerImpl implements ResourceManager
             throw e;
         }
 
-        if(customerId != -1 && !isRollback.get(id)){
+        if(customerId != -1 && !transactionManager.isRollback.get(id)){
             Object[] parameters = new Object[2];
             parameters[0] = id;
             parameters[1] = customerId;
             Action action = null;
-            try {
-                action = new Action(
-                        this.getClass().getMethod("deleteCustomer", int.class, int.class),
-                        parameters);
-            } catch (NoSuchMethodException e) {
-                e.printStackTrace();
-            }
-            actions.get(id).push(action);
+            action = new Action("deleteCustomer", parameters);
+            transactionManager.actions.get(id).push(action);
         }
-
+        MiddlewareBackup.save(transactionManager);
         return customerId;
     }
 
     @Override
     public boolean newCustomer(int id, int cid) throws RemoteException, TransactionAbortedException, InvalidTransactionException{
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         boolean result = false;
@@ -317,14 +333,12 @@ public class MiddlewareManagerImpl implements ResourceManager
                 result = rmFlight.newCustomer(id, cid) &&
                         rmRoom.newCustomer(id, cid) &&
                         rmCar.newCustomer(id, cid);
-                if(result && !isRollback.get(id)){
+                if(result && !transactionManager.isRollback.get(id)){
                     Object[] parameters = new Object[2];
                     parameters[0] = id;
                     parameters[1] = cid;
-                    Action action = new Action(
-                            this.getClass().getMethod("deleteCustomer", int.class, int.class),
-                            parameters);
-                    actions.get(id).push(action);
+                    Action action = new Action("deleteCustomer", parameters);
+                    transactionManager.actions.get(id).push(action);
 
                 }
             }
@@ -337,17 +351,16 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
-            } catch (NoSuchMethodException e){
-
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return result;
     }
 
     @Override
     public boolean deleteFlight(int id, int flightNum) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         boolean result = false;
@@ -356,16 +369,14 @@ public class MiddlewareManagerImpl implements ResourceManager
                 int oldSeats = queryFlight(id,flightNum);
                 int oldPrice = queryFlightPrice(id, flightNum);
                 result = rmFlight.deleteFlight(id,flightNum);
-                if(result && !isRollback.get(id)){
+                if(result && !transactionManager.isRollback.get(id)){
                     Object[] parameters = new Object[4];
                     parameters[0] = id;
                     parameters[1] = flightNum;
                     parameters[2] = oldSeats;
                     parameters[3] = oldPrice;
-                    Action action = new Action(
-                            this.getClass().getMethod("addFlight", int.class, int.class, int.class, int.class),
-                            parameters);
-                    actions.get(id).push(action);
+                    Action action = new Action("addFlight", parameters);
+                    transactionManager.actions.get(id).push(action);
 
                 }
             }
@@ -378,17 +389,16 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
-            } catch (NoSuchMethodException e){
-
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return result;
     }
 
     @Override
     public boolean deleteCars(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         boolean result = false;
@@ -397,16 +407,14 @@ public class MiddlewareManagerImpl implements ResourceManager
                 int oldCars = queryCars(id, location);
                 int oldPrice = queryCarsPrice(id, location);
                 result = rmCar.deleteCars(id,location);
-                if(result && !isRollback.get(id)){
+                if(result && !transactionManager.isRollback.get(id)){
                     Object[] parameters = new Object[4];
                     parameters[0] = id;
                     parameters[1] = location;
                     parameters[2] = oldCars;
                     parameters[3] = oldPrice;
-                    Action action = new Action(
-                            this.getClass().getMethod("addCars", int.class, String.class, int.class, int.class),
-                            parameters);
-                    actions.get(id).push(action);
+                    Action action = new Action("addCars", parameters);
+                    transactionManager.actions.get(id).push(action);
 
                 }
             }
@@ -419,17 +427,16 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
-            } catch (NoSuchMethodException e){
-
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return result;
     }
 
     @Override
     public boolean deleteRooms(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         boolean result = false;
@@ -438,16 +445,14 @@ public class MiddlewareManagerImpl implements ResourceManager
                 int oldRooms = queryRooms(id, location);
                 int oldPrice = queryRoomsPrice(id, location);
                 result = rmRoom.deleteRooms(id,location);
-                if(result && !isRollback.get(id)){
+                if(result && !transactionManager.isRollback.get(id)){
                     Object[] parameters = new Object[4];
                     parameters[0] = id;
                     parameters[1] = location;
                     parameters[2] = oldRooms;
                     parameters[3] = oldPrice;
-                    Action action = new Action(
-                            this.getClass().getMethod("addRooms", int.class, String.class, int.class, int.class),
-                            parameters);
-                    actions.get(id).push(action);
+                    Action action = new Action("addRooms", parameters);
+                    transactionManager.actions.get(id).push(action);
 
                 }
 
@@ -461,17 +466,16 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
-            } catch (NoSuchMethodException e){
-
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return result;
     }
 
     @Override
     public boolean deleteCustomer(int id, int customer) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
 
@@ -483,20 +487,18 @@ public class MiddlewareManagerImpl implements ResourceManager
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
             try{
-                if(!isRollback.get(id)){
+                if(!transactionManager.isRollback.get(id)){
                     prepareRollbackCustomer(id, customer);
                 }
                 result = rmFlight.deleteCustomer(id, customer) &&
                         rmCar.deleteCustomer(id, customer) &&
                         rmRoom.deleteCustomer(id, customer);
-                if(result && !isRollback.get(id)){
+                if(result && !transactionManager.isRollback.get(id)){
                     Object[] parameters = new Object[2];
                     parameters[0] = id;
                     parameters[1] = customer;
-                    Action action = new Action(
-                            this.getClass().getMethod("newCustomer", int.class, int.class),
-                            parameters);
-                    actions.get(id).push(action);
+                    Action action = new Action("newCustomer", parameters);
+                    transactionManager.actions.get(id).push(action);
 
                 }
             }
@@ -509,17 +511,16 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
-            } catch (NoSuchMethodException e){
-
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return result;
     }
 
     @Override
     public int queryFlight(int id, int flightNumber) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         int seats = -1;
@@ -538,13 +539,14 @@ public class MiddlewareManagerImpl implements ResourceManager
                 throw e;
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return seats;
     }
 
     @Override
     public int queryCars(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         int numCars = -1;
@@ -563,13 +565,14 @@ public class MiddlewareManagerImpl implements ResourceManager
                 throw e;
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return numCars;
     }
 
     @Override
     public int queryRooms(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         int numRooms = -1;
@@ -588,13 +591,14 @@ public class MiddlewareManagerImpl implements ResourceManager
                 throw e;
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return numRooms;
     }
 
     @Override
     public String queryCustomerInfo(int id, int customer) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         String bill = "";
@@ -625,6 +629,7 @@ public class MiddlewareManagerImpl implements ResourceManager
                 throw e;
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return bill;
     }
 
@@ -638,11 +643,9 @@ public class MiddlewareManagerImpl implements ResourceManager
                 parameters[0] = id;
                 parameters[1] = customer;
                 parameters[2] = flightNumber;
-                Action action = new Action(
-                        this.getClass().getMethod("reserveFlight", int.class, int.class, int.class),
-                        parameters);
-                actions.get(id).push(action);
-                System.out.println(action.method.toString());
+                Action action = new Action("reserveFlight", parameters);
+                transactionManager.actions.get(id).push(action);
+                //System.out.println(action.method.toString());
             }
 
             String[] rooms = rmRoom.queryCustomerInfo(id, customer).split("\n");
@@ -653,11 +656,9 @@ public class MiddlewareManagerImpl implements ResourceManager
                 parameters[0] = id;
                 parameters[1] = customer;
                 parameters[2] = location;
-                Action action = new Action(
-                        this.getClass().getMethod("reserveRoom", int.class, int.class, String.class),
-                        parameters);
-                actions.get(id).push(action);
-                System.out.println(action.method.toString());
+                Action action = new Action("reserveRoom", parameters);
+                transactionManager.actions.get(id).push(action);
+                //System.out.println(action.method.toString());
             }
 
             String[] cars = rmCar.queryCustomerInfo(id, customer).split("\n");
@@ -668,16 +669,15 @@ public class MiddlewareManagerImpl implements ResourceManager
                 parameters[0] = id;
                 parameters[1] = customer;
                 parameters[2] = location;
-                Action action = new Action(
-                        this.getClass().getMethod("reserveCar", int.class, int.class, String.class),
-                        parameters);
-                actions.get(id).push(action);
-                System.out.println(action.method.toString());
+                Action action = new Action("reserveCar", parameters);
+                transactionManager.actions.get(id).push(action);
+                //System.out.println(action.method.toString());
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+        //MiddlewareBackup.save(transactionManager);
     }
 
     private List<String> getObjectCustomer(int id, int customer){
@@ -710,7 +710,7 @@ public class MiddlewareManagerImpl implements ResourceManager
     @Override
     public int queryFlightPrice(int id, int flightNumber) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         int price = -1;
@@ -729,13 +729,14 @@ public class MiddlewareManagerImpl implements ResourceManager
                 throw e;
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return price;
     }
 
     @Override
     public int queryCarsPrice(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         int price = -1;
@@ -754,13 +755,14 @@ public class MiddlewareManagerImpl implements ResourceManager
                 throw e;
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return price;
     }
 
     @Override
     public int queryRoomsPrice(int id, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         int price = -1;
@@ -779,13 +781,14 @@ public class MiddlewareManagerImpl implements ResourceManager
                 throw e;
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return price;
     }
 
     @Override
     public boolean reserveFlight(int id, int customer, int flightNumber) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         boolean result = false;
@@ -793,15 +796,13 @@ public class MiddlewareManagerImpl implements ResourceManager
                 transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
             try{
                 result = rmFlight.reserveFlight(id,customer,flightNumber);
-                if(result && !isRollback.get(id)){
+                if(result && !transactionManager.isRollback.get(id)){
                     Object[] parameters = new Object[3];
                     parameters[0] = id;
                     parameters[1] = customer;
                     parameters[2] = flightNumber;
-                    Action action = new Action(
-                            this.getClass().getMethod("cancelFlight", int.class, int.class, int.class),
-                            parameters);
-                    actions.get(id).push(action);
+                    Action action = new Action("cancelFlight", parameters);
+                    transactionManager.actions.get(id).push(action);
 
                 }
             }
@@ -814,17 +815,16 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
-            } catch (NoSuchMethodException e){
-
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return result;
     }
 
     @Override
     public boolean reserveCar(int id, int customer, String location) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         boolean result = false;
@@ -832,15 +832,13 @@ public class MiddlewareManagerImpl implements ResourceManager
                 transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
             try{
                 result = rmCar.reserveCar(id,customer,location);
-                if(result && !isRollback.get(id)){
+                if(result && !transactionManager.isRollback.get(id)){
                     Object[] parameters = new Object[3];
                     parameters[0] = id;
                     parameters[1] = customer;
                     parameters[2] = location;
-                    Action action = new Action(
-                            this.getClass().getMethod("cancelCar", int.class, int.class, String.class),
-                            parameters);
-                    actions.get(id).push(action);
+                    Action action = new Action("cancelCar", parameters);
+                    transactionManager.actions.get(id).push(action);
 
                 }
             }
@@ -853,18 +851,16 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
-            } catch (NoSuchMethodException e){
-
             }
         }
-
+        MiddlewareBackup.save(transactionManager);
         return result;
     }
 
     @Override
     public boolean reserveRoom(int id, int customer, String locationd) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)) {
+        if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
         boolean result = false;
@@ -872,15 +868,13 @@ public class MiddlewareManagerImpl implements ResourceManager
                 transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
             try{
                 result = rmRoom.reserveRoom(id, customer, locationd);
-                if(result && !isRollback.get(id)){
+                if(result && !transactionManager.isRollback.get(id)){
                     Object[] parameters = new Object[3];
                     parameters[0] = id;
                     parameters[1] = customer;
                     parameters[2] = locationd;
-                    Action action = new Action(
-                            this.getClass().getMethod("cancelRoom", int.class, int.class, String.class),
-                            parameters);
-                    actions.get(id).push(action);
+                    Action action = new Action("cancelRoom", parameters);
+                    transactionManager.actions.get(id).push(action);
 
                 }
             }
@@ -893,10 +887,9 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
-            } catch (NoSuchMethodException e){
-
             }
         }
+        MiddlewareBackup.save(transactionManager);
         return result;
     }
 
@@ -919,7 +912,7 @@ public class MiddlewareManagerImpl implements ResourceManager
     @Override
     public boolean itinerary(int id, int customer, Vector flightNumbers, String location, boolean Car, boolean Room) throws RemoteException, TransactionAbortedException, InvalidTransactionException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)){
+        if (transactionManager.clientTime.containsKey(id)){
             resetTime(id);
         } // the case where the transaction has been aborted due to Client Timeout is
         //notified to the client by the exception thrown when tries to lock with invalid Xid
@@ -959,57 +952,47 @@ public class MiddlewareManagerImpl implements ResourceManager
                 throw e;
             }
         }
-        try{
-            for (Object flightNumber : flightNumbers) {
-                String flightNumberString = String.valueOf(flightNumber);
-                results.add(rmFlight.reserveFlight(id, customer, Integer.parseInt(flightNumberString)));
-                if (results.get(results.size() - 1)) {
-                    Object[] parameters = new Object[3];
-                    parameters[0] = id;
-                    parameters[1] = customer;
-                    parameters[2] = Integer.parseInt(flightNumberString);
-                    Action action = new Action(
-                            this.getClass().getMethod("cancelFlight", int.class, int.class, int.class),
-                            parameters);
-                    actions.get(id).push(action);
-                }
-
+        for (Object flightNumber : flightNumbers) {
+            String flightNumberString = String.valueOf(flightNumber);
+            results.add(rmFlight.reserveFlight(id, customer, Integer.parseInt(flightNumberString)));
+            if (results.get(results.size() - 1)) {
+                Object[] parameters = new Object[3];
+                parameters[0] = id;
+                parameters[1] = customer;
+                parameters[2] = Integer.parseInt(flightNumberString);
+                Action action = new Action("cancelFlight", parameters);
+                transactionManager.actions.get(id).push(action);
             }
-            if (Car) {
-                results.add(rmCar.reserveCar(id, customer, location));
-                if (results.get(results.size() - 1)) {
-                    Object[] parameters = new Object[3];
-                    parameters[0] = id;
-                    parameters[1] = customer;
-                    parameters[2] = location;
-                    Action action = new Action(
-                            this.getClass().getMethod("cancelCar", int.class, int.class, String.class),
-                            parameters);
-                    actions.get(id).push(action);
-                }
-            }
-            if (Room) {
-                results.add(rmRoom.reserveRoom(id, customer, location));
-                if (results.get(results.size() - 1)) {
-                    Object[] parameters = new Object[3];
-                    parameters[0] = id;
-                    parameters[1] = customer;
-                    parameters[2] = location;
-                    Action action = new Action(
-                            this.getClass().getMethod("cancelRoom", int.class, int.class, String.class),
-                            parameters);
-                    actions.get(id).push(action);
-                }
-            }
-
-            if(results.contains(false)){
-                abort(id);
-                throw new TransactionAbortedException(id, "Item not available anymore, abort transaction");
-            }
-        }catch (NoSuchMethodException e){
 
         }
+        if (Car) {
+            results.add(rmCar.reserveCar(id, customer, location));
+            if (results.get(results.size() - 1)) {
+                Object[] parameters = new Object[3];
+                parameters[0] = id;
+                parameters[1] = customer;
+                parameters[2] = location;
+                Action action = new Action("cancelCar", parameters);
+                transactionManager.actions.get(id).push(action);
+            }
+        }
+        if (Room) {
+            results.add(rmRoom.reserveRoom(id, customer, location));
+            if (results.get(results.size() - 1)) {
+                Object[] parameters = new Object[3];
+                parameters[0] = id;
+                parameters[1] = customer;
+                parameters[2] = location;
+                Action action = new Action("cancelRoom", parameters);
+                transactionManager.actions.get(id).push(action);
+            }
+        }
 
+        if(results.contains(false)){
+            abort(id);
+            throw new TransactionAbortedException(id, "Item not available anymore, abort transaction");
+        }
+        MiddlewareBackup.save(transactionManager);
         return true;
 
     }
@@ -1018,18 +1001,20 @@ public class MiddlewareManagerImpl implements ResourceManager
     public int start() throws RemoteException {
         checkOldTransactions();
         int idTransaction = transactionManager.start();
-        actions.put(idTransaction, new Stack<>());
-        isRollback.put(idTransaction, false);
+        transactionManager.actions.put(idTransaction, new ArrayDeque<>());
+        transactionManager.isRollback.put(idTransaction, false);
         resetTime(idTransaction);
+        MiddlewareBackup.save(transactionManager);
         return idTransaction;
     }
 
     @Override
     public boolean commit(int id) throws RemoteException, InvalidTransactionException, TransactionAbortedException {
         checkOldTransactions();
-        if (clientTime.containsKey(id)){
-            clientTime.remove(id);
+        if (transactionManager.clientTime.containsKey(id)){
+            transactionManager.clientTime.remove(id);
         }
+        MiddlewareBackup.save(transactionManager);
         return transactionManager.commit(id);
 
     }
@@ -1038,17 +1023,17 @@ public class MiddlewareManagerImpl implements ResourceManager
     public void abort(int id) throws RemoteException, InvalidTransactionException {
 
         //checkOldTransactions();
-        if (clientTime.containsKey(id)){
-            clientTime.remove(id);
+        if (transactionManager.clientTime.containsKey(id)){
+            transactionManager.clientTime.remove(id);
         }
-        
-        isRollback.replace(id, true);
+
+        transactionManager.isRollback.replace(id, true);
         System.out.println("Rollback for transaction: "+id);
-        while (!actions.get(id).empty()){
-            Action action = actions.get(id).pop();
-            System.out.println("    "+action.method.toString());
+        while (transactionManager.actions.get(id).size() != 0){
+            Action action = transactionManager.actions.get(id).pop();
             try {
-                action.method.invoke(this, action.parameters);
+                System.out.println("    "+methods.get(action.method).toString());
+                methods.get(action.method).invoke(this, action.parameters);
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             } catch (InvocationTargetException e) {
@@ -1056,11 +1041,13 @@ public class MiddlewareManagerImpl implements ResourceManager
             }
         }
         transactionManager.abort(id);
+        MiddlewareBackup.save(transactionManager);
     }
 
     @Override
     public boolean shutdown() throws RemoteException {
         checkOldTransactions();
+        MiddlewareBackup.save(transactionManager);
         System.out.println("Shutdown");
         if(transactionManager.stillHasTransaction()){
             System.out.println("No!");
@@ -1090,7 +1077,7 @@ public class MiddlewareManagerImpl implements ResourceManager
     public void resetTime(int id) {
         Date date = new Date();
         long timestamp = date.getTime();
-        clientTime.put(id, timestamp);
+        transactionManager.clientTime.put(id, timestamp);
     }
 
     public synchronized void checkOldTransactions() {
@@ -1100,9 +1087,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         // and remove them after for loop
         //otherwise, raise ConcurrentModificationException
         List<Integer> oldTransactions = new ArrayList<>();
-        for (int id : clientTime.keySet()){
-            long timestamp = clientTime.get(id);
-            if (time - (timestamp + timeout) > 0) {
+        for (int id : transactionManager.clientTime.keySet()){
+            long timestamp = transactionManager.clientTime.get(id);
+            if (time - (timestamp + ttl) > 0) {
                 oldTransactions.add(id);
             }
         }

@@ -18,6 +18,8 @@ public class ResourceManagerImpl implements ResourceManager
 {
     
     protected RMHashtable m_itemHT = new RMHashtable();
+    private Backup backup;
+    static private boolean doBackupAtLaunch = true;
 
 
     public static void main(String args[]) {
@@ -37,7 +39,7 @@ public class ResourceManagerImpl implements ResourceManager
 
         try {
             // create a new Server object
-            ResourceManagerImpl obj = new ResourceManagerImpl();
+            ResourceManagerImpl obj = new ResourceManagerImpl(registryName);
             // dynamically generate the stub (client proxy)
             ResourceManager rm = (ResourceManager) UnicastRemoteObject.exportObject(obj, 0);
 
@@ -55,9 +57,19 @@ public class ResourceManagerImpl implements ResourceManager
         if (System.getSecurityManager() == null) {
             System.setSecurityManager(new RMISecurityManager());
         }
+
     }
      
-    public ResourceManagerImpl() throws RemoteException {
+    public ResourceManagerImpl(String path) throws RemoteException {
+        backup = new Backup(path);
+        if(doBackupAtLaunch){
+            RMHashtable oldData = backup.getBackup();
+            if(oldData == null){
+                m_itemHT = new RMHashtable();
+            } else {
+                m_itemHT = oldData;
+            }
+        }
     }
      
 
@@ -75,13 +87,17 @@ public class ResourceManagerImpl implements ResourceManager
         synchronized(m_itemHT) {
             m_itemHT.put(key, value);
         }
+        backup.save(m_itemHT);
     }
     
     // Remove the item out of storage
     protected RMItem removeData(int id, String key) {
+        RMItem item;
         synchronized(m_itemHT) {
-            return (RMItem)m_itemHT.remove(key);
+             item = (RMItem)m_itemHT.remove(key);
         }
+        backup.save(m_itemHT);
+        return item;
     }
     
     

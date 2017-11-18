@@ -1,17 +1,24 @@
 package TransactionManager;
 
 
+import MiddlewareImpl.Action;
 import ResInterface.InvalidTransactionException;
 import ResInterface.TransactionAbortedException;
 import LockManager.LockManager;
 import LockManager.DeadlockException;
 
+import java.io.Serializable;
+import java.util.Deque;
 import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class TransactionManager {
-    static LockManager lockManager = new LockManager();
-    static int current_transaction_id = 0;
-    public static HashSet<Integer> transactions = new HashSet<>();;
+public class TransactionManager implements Serializable {
+    private LockManager lockManager = new LockManager();
+    int current_transaction_id = 0;
+    public HashSet<Integer> transactions = new HashSet<>();
+    public ConcurrentHashMap<Integer, Long> clientTime = new ConcurrentHashMap<>();
+    public ConcurrentHashMap<Integer, Deque<Action>> actions = new ConcurrentHashMap<>();
+    public ConcurrentHashMap<Integer, Boolean> isRollback = new ConcurrentHashMap<>();
 
 
     public synchronized int start(){

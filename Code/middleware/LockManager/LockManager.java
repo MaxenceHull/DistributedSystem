@@ -1,10 +1,11 @@
 package LockManager;
 
 import javax.xml.crypto.Data;
+import java.io.Serializable;
 import java.util.BitSet;
 import java.util.Vector;
 
-public class LockManager
+public class LockManager implements Serializable
 {
     public static final int READ = 0;
     public static final int WRITE = 1;
@@ -12,9 +13,9 @@ public class LockManager
     private static int TABLE_SIZE = 2039;
     private static int DEADLOCK_TIMEOUT = 10000;
     
-    private static TPHashTable lockTable = new TPHashTable(LockManager.TABLE_SIZE);
-    private static TPHashTable stampTable = new TPHashTable(LockManager.TABLE_SIZE);
-    private static TPHashTable waitTable = new TPHashTable(LockManager.TABLE_SIZE);
+    private TPHashTable lockTable = new TPHashTable(LockManager.TABLE_SIZE);
+    private TPHashTable stampTable = new TPHashTable(LockManager.TABLE_SIZE);
+    private TPHashTable waitTable = new TPHashTable(LockManager.TABLE_SIZE);
     
     public LockManager() {
         super();

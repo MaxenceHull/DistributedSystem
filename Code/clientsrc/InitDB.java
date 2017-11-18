@@ -1,5 +1,6 @@
 import ResInterface.*;
 
+import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -48,7 +49,7 @@ public class InitDB
 
 
         if (System.getSecurityManager() == null) {
-            //System.setSecurityManager(new RMISecurityManager());
+            System.setSecurityManager(new RMISecurityManager());
         }
 
         try {
