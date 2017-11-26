@@ -6,6 +6,7 @@ package ResImpl;
 
 import ResInterface.*;
 
+import java.lang.reflect.Method;
 import java.util.*;
 
 import java.rmi.registry.Registry;
@@ -21,9 +22,11 @@ public class ResourceManagerImpl implements ResourceManager
     private Backup backup;
     static private boolean doBackupAtLaunch = true;
     private boolean crash = false;
-    private boolean CRASH_AFTER_REQUEST = false;
-    private boolean CRASH_AFTER_SENDING_ANSWER = false;
-    private boolean CRASH_AFTER_DECISION = false;
+    private static int CRASH_AFTER_REQUEST = 0;
+    private static int CRASH_AFTER_SENDING_ANSWER = 1;
+    private static int CRASH_AFTER_DECISION = 2;
+    private static int CRASH_IMMEDIATLY = 3;
+    private HashMap<Integer, Boolean> errors;
 
 
     public static void main(String args[]) {
@@ -74,6 +77,13 @@ public class ResourceManagerImpl implements ResourceManager
                 m_itemHT = oldData;
             }
         }
+        //Set all errors to false
+        errors = new HashMap<>();
+        errors.put(CRASH_AFTER_REQUEST, false);
+        errors.put(CRASH_AFTER_SENDING_ANSWER, false);
+        errors.put(CRASH_AFTER_DECISION, false);
+        errors.put(CRASH_IMMEDIATLY, false);
+
     }
      
 
@@ -585,7 +595,7 @@ public class ResourceManagerImpl implements ResourceManager
     @Override
     public boolean commit(int id) throws RemoteException, InvalidTransactionException, TransactionAbortedException {
         System.out.println("Decision received for transaction "+id);
-        if(crash && CRASH_AFTER_DECISION){
+        if(crash && errors.get(CRASH_AFTER_DECISION)){
             System.exit(1);
         }
         System.out.println("Transaction "+id+" committed");
@@ -606,11 +616,24 @@ public class ResourceManagerImpl implements ResourceManager
     @Override
     public boolean voteRequest() throws RemoteException {
         System.out.println("Vote request received");
-        if(crash && CRASH_AFTER_REQUEST){
+        if(crash && errors.get(CRASH_AFTER_REQUEST)){
             System.exit(1);
         }
         System.out.println("Voted yes");
         return true;
+    }
+
+    @Override
+    public void crash(String location, int errorCode) throws RemoteException {
+        crash = true;
+        if(errors.containsKey(errorCode)){
+            errors.replace(errorCode, true);
+            if(errorCode == CRASH_IMMEDIATLY){
+                System.exit(1);
+            }
+        }else{
+            System.out.println("Error code "+errorCode+" is not correct");
+        }
     }
 
 }

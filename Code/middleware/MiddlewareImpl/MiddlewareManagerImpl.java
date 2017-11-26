@@ -7,6 +7,7 @@ package MiddlewareImpl;
 import LockManager.DataObj;
 import ResInterface.*;
 import TransactionManager.TransactionManager;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -26,13 +27,16 @@ public class MiddlewareManagerImpl implements ResourceManager
     static public int RM_ROOM = 0;
     static public int RM_FLIGHT = 1;
     static public int RM_CAR = 2;
-    static private boolean CRASH_BEFORE_REQUEST = false;
-    static private boolean CRASH_AFTER_REQUEST = false;
-    static private boolean CRASH_AFTER_SOME_VOTES = false;
-    static private boolean CRASH_AFTER_VOTES = false;
-    static private boolean CRASH_AFTER_DECIDING = false;
-    static private boolean CRASH_AFTER_SOME_DECISIONS = false;
-    static private boolean CRASH_AFTER_DECISIONS = false;
+
+    static private int CRASH_BEFORE_REQUEST = 0;
+    static private int CRASH_AFTER_REQUEST = 1;
+    static private int CRASH_AFTER_SOME_VOTES = 2;
+    static private int CRASH_AFTER_VOTES = 3;
+    static private int CRASH_AFTER_DECIDING = 4;
+    static private int CRASH_AFTER_SOME_DECISIONS = 5;
+    static private int CRASH_AFTER_DECISIONS = 6;
+    static private int CRASH_IMMEDIATLY = 7;
+    private HashMap<Integer, Boolean> errors = new HashMap<>();
 
     static ResourceManager rmFlight = null;
     static ResourceManager rmCar = null;
@@ -146,6 +150,15 @@ public class MiddlewareManagerImpl implements ResourceManager
 
         }
 
+        errors.put(CRASH_BEFORE_REQUEST, true);
+        errors.put(CRASH_AFTER_REQUEST, true);
+        errors.put(CRASH_AFTER_SOME_VOTES, true);
+        errors.put(CRASH_AFTER_VOTES, true);
+        errors.put(CRASH_AFTER_DECIDING, true);
+        errors.put(CRASH_AFTER_DECIDING, true);
+        errors.put(CRASH_AFTER_SOME_DECISIONS, true);
+        errors.put(CRASH_AFTER_DECISIONS, true);
+        errors.put(CRASH_IMMEDIATLY, true);
     }
 
     private void finish2PC(){
@@ -1042,7 +1055,7 @@ public class MiddlewareManagerImpl implements ResourceManager
         System.out.println("\n######### 2PC for transaction "+id+" #########");
         transactionManager.hasCommitted.replace(id, true);
         MiddlewareBackup.save(transactionManager);
-        if(crash && CRASH_BEFORE_REQUEST){
+        if(crash && errors.get(CRASH_BEFORE_REQUEST)){
             System.exit(1);
         }
         if(transactionManager.votes.get(id).get(RM_ROOM) == null){
@@ -1059,7 +1072,8 @@ public class MiddlewareManagerImpl implements ResourceManager
             }
             MiddlewareBackup.save(transactionManager);
         }
-        if(crash && CRASH_AFTER_SOME_VOTES){
+
+        if(crash && errors.get(CRASH_AFTER_SOME_VOTES)){
             System.exit(1);
         }
 
@@ -1093,7 +1107,7 @@ public class MiddlewareManagerImpl implements ResourceManager
             MiddlewareBackup.save(transactionManager);
         }
 
-        if(crash && CRASH_AFTER_VOTES){
+        if(crash && errors.get(CRASH_AFTER_VOTES)){
             System.exit(1);
         }
 
@@ -1101,7 +1115,7 @@ public class MiddlewareManagerImpl implements ResourceManager
                 transactionManager.votes.get(id).get(RM_FLIGHT) &&
                 transactionManager.votes.get(id).get(RM_CAR)){
             System.out.println("    Commit transaction "+id);
-            if(crash && CRASH_AFTER_DECIDING){
+            if(crash && errors.get(CRASH_AFTER_DECIDING)){
                 System.exit(1);
             }
             if(transactionManager.decisions.get(id).get(RM_CAR) == null){
@@ -1116,7 +1130,7 @@ public class MiddlewareManagerImpl implements ResourceManager
                 MiddlewareBackup.save(transactionManager);
             }
 
-            if(crash && CRASH_AFTER_SOME_DECISIONS){
+            if(crash && errors.get(CRASH_AFTER_SOME_DECISIONS)){
                 System.exit(1);
             }
 
@@ -1144,7 +1158,7 @@ public class MiddlewareManagerImpl implements ResourceManager
                 MiddlewareBackup.save(transactionManager);
             }
 
-            if(crash && CRASH_AFTER_DECISIONS){
+            if(crash && errors.get(CRASH_AFTER_DECISIONS)){
                 System.exit(1);
             }
 
@@ -1220,6 +1234,27 @@ public class MiddlewareManagerImpl implements ResourceManager
     @Override
     public boolean voteRequest() throws RemoteException {
         return false;
+    }
+
+    @Override
+    public void crash(String location, int error) throws RemoteException {
+        if(location.equals("middleware")){
+            crash = true;
+            if(errors.containsKey(error)){
+
+            }else{
+                System.out.println("Error code "+error+" is not valid");
+                return;
+            }
+        }else if(location.equals("rmcar")){
+            rmCar.crash(location, error);
+        }else if(location.equals("rmflight")){
+            rmFlight.crash(location, error);
+        }else if(location.equals("rmroom")){
+            rmRoom.crash(location, error);
+        }else {
+            System.out.println("Crash: location "+location+" is unknown");
+        }
     }
 
     public void resetTime(int id) {

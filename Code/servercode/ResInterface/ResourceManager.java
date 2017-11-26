@@ -153,5 +153,6 @@ public interface ResourceManager extends Remote
 
     public boolean voteRequest() throws RemoteException;
 
+    public void crash(String location, int error) throws RemoteException;
     			
 }
