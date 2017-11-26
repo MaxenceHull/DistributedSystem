@@ -151,6 +151,7 @@ public interface ResourceManager extends Remote
 
     public boolean shutdown() throws RemoteException;
 
+    public boolean voteRequest() throws RemoteException;
 
     			
 }

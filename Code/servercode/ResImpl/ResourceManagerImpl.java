@@ -20,6 +20,10 @@ public class ResourceManagerImpl implements ResourceManager
     protected RMHashtable m_itemHT = new RMHashtable();
     private Backup backup;
     static private boolean doBackupAtLaunch = true;
+    private boolean crash = false;
+    private boolean CRASH_AFTER_REQUEST = false;
+    private boolean CRASH_AFTER_SENDING_ANSWER = false;
+    private boolean CRASH_AFTER_DECISION = false;
 
 
     public static void main(String args[]) {
@@ -580,17 +584,32 @@ public class ResourceManagerImpl implements ResourceManager
 
     @Override
     public boolean commit(int id) throws RemoteException, InvalidTransactionException, TransactionAbortedException {
+        System.out.println("Decision received for transaction "+id);
+        if(crash && CRASH_AFTER_DECISION){
+            System.exit(1);
+        }
+        System.out.println("Transaction "+id+" committed");
         return false;
     }
 
     @Override
     public void abort(int id) throws RemoteException, InvalidTransactionException {
-
+        System.out.println("Transaction "+id+" aborted");
     }
 
     @Override
     public boolean shutdown() throws RemoteException {
         System.exit(0);
+        return true;
+    }
+
+    @Override
+    public boolean voteRequest() throws RemoteException {
+        System.out.println("Vote request received");
+        if(crash && CRASH_AFTER_REQUEST){
+            System.exit(1);
+        }
+        System.out.println("Voted yes");
         return true;
     }
 

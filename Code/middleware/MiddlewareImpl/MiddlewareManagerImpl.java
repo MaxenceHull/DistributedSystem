@@ -17,12 +17,22 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class MiddlewareManagerImpl implements ResourceManager
 {
     static private boolean doBackupAtLaunch = true;
+    static private boolean crash = true;
+    static public int RM_ROOM = 0;
+    static public int RM_FLIGHT = 1;
+    static public int RM_CAR = 2;
+    static private boolean CRASH_BEFORE_REQUEST = false;
+    static private boolean CRASH_AFTER_REQUEST = false;
+    static private boolean CRASH_AFTER_SOME_VOTES = false;
+    static private boolean CRASH_AFTER_VOTES = false;
+    static private boolean CRASH_AFTER_DECIDING = false;
+    static private boolean CRASH_AFTER_SOME_DECISIONS = false;
+    static private boolean CRASH_AFTER_DECISIONS = false;
 
     static ResourceManager rmFlight = null;
     static ResourceManager rmCar = null;
@@ -57,24 +67,23 @@ public class MiddlewareManagerImpl implements ResourceManager
             // Bind the remote object's stub in the registry
             Registry registry = LocateRegistry.getRegistry(port_server);
             registry.rebind("Group4MiddlewareManager", rm);
-
+            //Connect to the resource managers
+            rmCar = connectToAResourceManager("localhost", 1099, "Group4ResourceManagerCar");
+            rmFlight = connectToAResourceManager("localhost", 1099, "Group4ResourceManagerFlight");
+            rmRoom = connectToAResourceManager("localhost", 1099, "Group4ResourceManagerRoom");
+            obj.finish2PC();
             System.err.println("Middleware ready");
         } catch (Exception e) {
             System.err.println("Middleware exception: " + e.toString());
             e.printStackTrace();
         }
 
-        //Connect to the resource managers
-        rmCar = connectToAResourceManager("localhost", 1099, "Group4ResourceManagerCar");
-        rmFlight = connectToAResourceManager("localhost", 1099, "Group4ResourceManagerFlight");
-        rmRoom = connectToAResourceManager("localhost", 1099, "Group4ResourceManagerRoom");
+
 
         // Create and install a security manager
         if (System.getSecurityManager() == null) {
             System.setSecurityManager(new RMISecurityManager());
         }
-
-
 
     }
 
@@ -137,6 +146,20 @@ public class MiddlewareManagerImpl implements ResourceManager
 
         }
 
+    }
+
+    private void finish2PC(){
+        Iterator iter = transactionManager.transactions.iterator();
+        while (iter.hasNext()) {
+            int transactionId = (int)iter.next();
+            if(transactionManager.hasCommitted.get(transactionId)){
+                try {
+                    commit(transactionId);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
 
@@ -1001,8 +1024,6 @@ public class MiddlewareManagerImpl implements ResourceManager
     public int start() throws RemoteException {
         checkOldTransactions();
         int idTransaction = transactionManager.start();
-        transactionManager.actions.put(idTransaction, new ArrayDeque<>());
-        transactionManager.isRollback.put(idTransaction, false);
         resetTime(idTransaction);
         MiddlewareBackup.save(transactionManager);
         return idTransaction;
@@ -1014,17 +1035,139 @@ public class MiddlewareManagerImpl implements ResourceManager
         if (transactionManager.clientTime.containsKey(id)){
             transactionManager.clientTime.remove(id);
         }
+        if(!transactionManager.transactions.contains(id)){
+            throw new InvalidTransactionException(id, "Transaction "+id+" does not exist");
+        }
+
+        System.out.println("\n######### 2PC for transaction "+id+" #########");
+        transactionManager.hasCommitted.replace(id, true);
         MiddlewareBackup.save(transactionManager);
-        return transactionManager.commit(id);
+        if(crash && CRASH_BEFORE_REQUEST){
+            System.exit(1);
+        }
+        if(transactionManager.votes.get(id).get(RM_ROOM) == null){
+            Boolean vote;
+            try{
+                System.out.println("    Transaction "+id+": Vote request sent to RM Room");
+                vote = rmRoom.voteRequest();
+                transactionManager.votes.get(id).replace(RM_ROOM, vote);
+                System.out.println("    Transaction "+id+": RM Room voted "+vote.toString());
+            } catch (RemoteException e){
+                System.out.println("    Transaction "+id+": RM Room timeout");
+                abort(id);
+                return false;
+            }
+            MiddlewareBackup.save(transactionManager);
+        }
+        if(crash && CRASH_AFTER_SOME_VOTES){
+            System.exit(1);
+        }
+
+        if(transactionManager.votes.get(id).get(RM_FLIGHT) == null){
+            Boolean vote;
+            try{
+                System.out.println("    Transaction "+id+": Vote request sent to RM Flight");
+                vote = rmFlight.voteRequest();
+                transactionManager.votes.get(id).replace(RM_FLIGHT, vote);
+                System.out.println("    Transaction "+id+": RM Flight voted "+vote.toString());
+            } catch (RemoteException e){
+                System.out.println("    Transaction "+id+": RM Flight timeout");
+                abort(id);
+                return false;
+            }
+            MiddlewareBackup.save(transactionManager);
+        }
+
+        if(transactionManager.votes.get(id).get(RM_CAR) == null){
+            Boolean vote;
+            try{
+                System.out.println("    Transaction "+id+": Vote request sent to RM Car");
+                vote = rmCar.voteRequest();
+                transactionManager.votes.get(id).replace(RM_CAR, vote);
+                System.out.println("    Transaction "+id+": RM Car voted "+vote.toString());
+            } catch (RemoteException e){
+                System.out.println("    Transaction "+id+": RM Car timeout");
+                abort(id);
+                return false;
+            }
+            MiddlewareBackup.save(transactionManager);
+        }
+
+        if(crash && CRASH_AFTER_VOTES){
+            System.exit(1);
+        }
+
+        if(transactionManager.votes.get(id).get(RM_CAR) &&
+                transactionManager.votes.get(id).get(RM_FLIGHT) &&
+                transactionManager.votes.get(id).get(RM_CAR)){
+            System.out.println("    Commit transaction "+id);
+            if(crash && CRASH_AFTER_DECIDING){
+                System.exit(1);
+            }
+            if(transactionManager.decisions.get(id).get(RM_CAR) == null){
+                System.out.println("    Transaction "+id+": Send decision to RM Car");
+                try {
+                    rmCar.commit(id);
+                    transactionManager.decisions.get(id).replace(RM_CAR, true);
+                }catch (RemoteException e){
+                    System.out.println("    Transaction "+id+": RM Car timeout");
+                    abort(id);
+                }
+                MiddlewareBackup.save(transactionManager);
+            }
+
+            if(crash && CRASH_AFTER_SOME_DECISIONS){
+                System.exit(1);
+            }
+
+            if(transactionManager.decisions.get(id).get(RM_FLIGHT) == null){
+                System.out.println("    Transaction "+id+": Send decision to RM Flight");
+                try {
+                    rmFlight.commit(id);
+                    transactionManager.decisions.get(id).replace(RM_FLIGHT, true);
+                }catch (RemoteException e){
+                    System.out.println("    Transaction "+id+": RM Flight timeout");
+                    abort(id);
+                }
+                MiddlewareBackup.save(transactionManager);
+            }
+
+            if(transactionManager.decisions.get(id).get(RM_ROOM) == null){
+                System.out.println("    Transaction "+id+": Send decision to RM Room");
+                try {
+                    rmRoom.commit(id);
+                    transactionManager.decisions.get(id).replace(RM_ROOM, true);
+                }catch (RemoteException e){
+                    System.out.println("    Transaction "+id+": RM Room timeout");
+                    abort(id);
+                }
+                MiddlewareBackup.save(transactionManager);
+            }
+
+            if(crash && CRASH_AFTER_DECISIONS){
+                System.exit(1);
+            }
+
+            transactionManager.commit(id);
+
+        } else {
+            System.out.println("    Abort transaction "+id);
+            abort(id);
+        }
+
+        System.out.println("######### END 2PC for transaction "+id+" #########\n");
+        MiddlewareBackup.save(transactionManager);
+        return true;
 
     }
 
     @Override
     public void abort(int id) throws RemoteException, InvalidTransactionException {
-
-        //checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)){
             transactionManager.clientTime.remove(id);
+        }
+        if(!transactionManager.transactions.contains(id)){
+            throw new InvalidTransactionException(id, "Transaction "+id+" does not exist");
         }
 
         transactionManager.isRollback.replace(id, true);
@@ -1050,7 +1193,7 @@ public class MiddlewareManagerImpl implements ResourceManager
         MiddlewareBackup.save(transactionManager);
         System.out.println("Shutdown");
         if(transactionManager.stillHasTransaction()){
-            System.out.println("No!");
+            System.out.println("Some transactions are not closed!");
             return false;
         }
         try{
@@ -1072,6 +1215,11 @@ public class MiddlewareManagerImpl implements ResourceManager
 
         System.exit(0);
         return true;
+    }
+
+    @Override
+    public boolean voteRequest() throws RemoteException {
+        return false;
     }
 
     public void resetTime(int id) {

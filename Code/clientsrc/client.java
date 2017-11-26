@@ -45,32 +45,10 @@ public class client
             System.out.println ("Usage: java client [rmihost [rmiport]]");
             System.exit(1);
         }
-        
-        try 
-        {
-            // get a reference to the rmiregistry
-            Registry registry = LocateRegistry.getRegistry(server, port);
-            // get the proxy and the remote reference by rmiregistry lookup
-            rm = (ResourceManager) registry.lookup("Group4MiddlewareManager");
-            if(rm!=null)
-            {
-                System.out.println("Successful");
-                System.out.println("Connected to RM");
-            }
-            else
-            {
-                System.out.println("Unsuccessful");
-            }
-            // make call on remote method
-        } 
-        catch (Exception e) 
-        {    
-            System.err.println("Client exception: " + e.toString());
-            e.printStackTrace();
-        }
-        
-        
-        
+
+        connectToMiddleware(server, port);
+
+
         if (System.getSecurityManager() == null) {
             //System.setSecurityManager(new RMISecurityManager());
         }
@@ -91,6 +69,10 @@ public class client
         //remove heading and trailing white space
         command=command.trim();
         arguments=obj.parse(command);
+
+        if(rm == null){
+            connectToMiddleware(server, port);
+        }
         
         //decide which of the commands this was
         switch(obj.findChoice((String)arguments.elementAt(0))){
@@ -127,6 +109,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -153,6 +136,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -179,6 +163,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -197,6 +182,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -219,6 +205,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -242,6 +229,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -264,6 +252,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -286,6 +275,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -306,6 +296,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -326,6 +317,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -346,6 +338,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -366,6 +359,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;               
             
@@ -386,6 +380,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -406,6 +401,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }                
             break;
 
@@ -426,6 +422,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -450,6 +447,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -476,6 +474,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -501,6 +500,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
             
@@ -535,6 +535,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
                         
@@ -563,6 +564,7 @@ public class client
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
+            rm = null;
             }
             break;
 
@@ -580,6 +582,7 @@ public class client
                     System.out.println("Exception");
                     System.out.println(e.getMessage());
                     e.printStackTrace();
+                    rm = null;
                 }
                 break;
 
@@ -598,6 +601,7 @@ public class client
                     System.out.println("Exception:");
                     System.out.println(e.getMessage());
                     e.printStackTrace();
+                    rm = null;
                 }
                 break;
 
@@ -615,6 +619,7 @@ public class client
                     System.out.println("Exception:");
                     System.out.println(e.getMessage());
                     e.printStackTrace();
+                    rm = null;
                 }
                 break;
 
@@ -640,7 +645,32 @@ public class client
         }//end of switch
         }//end of while(true)
     }
-        
+
+    private static void connectToMiddleware(String server, int port) {
+        try
+        {
+            // get a reference to the rmiregistry
+            Registry registry = LocateRegistry.getRegistry(server, port);
+            // get the proxy and the remote reference by rmiregistry lookup
+            rm = (ResourceManager) registry.lookup("Group4MiddlewareManager");
+            if(rm!=null)
+            {
+                System.out.println("Successful");
+                System.out.println("Connected to RM");
+            }
+            else
+            {
+                System.out.println("Unsuccessful");
+            }
+            // make call on remote method
+        }
+        catch (Exception e)
+        {
+            System.err.println("Client exception: " + e.toString());
+            e.printStackTrace();
+        }
+    }
+
     public Vector parse(String command)
     {
     Vector arguments = new Vector();

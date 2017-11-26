@@ -2,13 +2,16 @@ package TransactionManager;
 
 
 import MiddlewareImpl.Action;
+import MiddlewareImpl.MiddlewareManagerImpl;
 import ResInterface.InvalidTransactionException;
 import ResInterface.TransactionAbortedException;
 import LockManager.LockManager;
 import LockManager.DeadlockException;
 
 import java.io.Serializable;
+import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -19,11 +22,27 @@ public class TransactionManager implements Serializable {
     public ConcurrentHashMap<Integer, Long> clientTime = new ConcurrentHashMap<>();
     public ConcurrentHashMap<Integer, Deque<Action>> actions = new ConcurrentHashMap<>();
     public ConcurrentHashMap<Integer, Boolean> isRollback = new ConcurrentHashMap<>();
+    public ConcurrentHashMap<Integer, HashMap<Integer, Boolean>> votes = new ConcurrentHashMap<>();
+    public ConcurrentHashMap<Integer, HashMap<Integer, Boolean>> decisions = new ConcurrentHashMap<>();
+    public ConcurrentHashMap<Integer, Boolean> hasCommitted = new ConcurrentHashMap<>();
 
 
     public synchronized int start(){
         current_transaction_id += 1;
         transactions.add(current_transaction_id);
+        actions.put(current_transaction_id, new ArrayDeque<>());
+        isRollback.put(current_transaction_id, false);
+        hasCommitted.put(current_transaction_id, false);
+        HashMap<Integer, Boolean> rm = new HashMap<>();
+        rm.put(MiddlewareManagerImpl.RM_ROOM, null);
+        rm.put(MiddlewareManagerImpl.RM_FLIGHT, null);
+        rm.put(MiddlewareManagerImpl.RM_CAR, null);
+        votes.put(current_transaction_id, rm);
+        rm = new HashMap<>();
+        rm.put(MiddlewareManagerImpl.RM_ROOM, null);
+        rm.put(MiddlewareManagerImpl.RM_FLIGHT, null);
+        rm.put(MiddlewareManagerImpl.RM_CAR, null);
+        decisions.put(current_transaction_id, rm);
         return current_transaction_id;
     }
 
@@ -31,7 +50,7 @@ public class TransactionManager implements Serializable {
         synchronized (this.transactions){
             if(!transactions.contains(transaction_id))
                 throw new InvalidTransactionException(transaction_id, "Transaction does not exist");
-            transactions.remove(transaction_id);
+            removeTransaction(transaction_id);
         }
         return lockManager.UnlockAll(transaction_id);
     }
@@ -51,10 +70,12 @@ public class TransactionManager implements Serializable {
     }
 
     public void abort(int id){
-        lockManager.UnlockAll(id);
-        synchronized (this.transactions){
-            transactions.remove(id);
+        if(lockManager.UnlockAll(id)) {
+            removeTransaction(id);
+        }else {
+            System.out.println("Unlock impossible on transaction "+id);
         }
+
     }
 
     public static String getKeyCar( String location ) {
@@ -80,6 +101,17 @@ public class TransactionManager implements Serializable {
     public boolean stillHasTransaction(){
         synchronized (this.transactions){
             return !transactions.isEmpty();
+        }
+    }
+
+    private void removeTransaction(int idTransaction){
+        synchronized (this.transactions){
+            transactions.remove(idTransaction);
+            clientTime.remove(idTransaction);
+            actions.remove(idTransaction);
+            isRollback.remove(idTransaction);
+            votes.remove(idTransaction);
+            hasCommitted.remove(idTransaction);
         }
     }
 
