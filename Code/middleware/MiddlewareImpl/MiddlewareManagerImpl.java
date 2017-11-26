@@ -49,6 +49,10 @@ public class MiddlewareManagerImpl implements ResourceManager
 
     private HashMap<String, Method> methods;
 
+    private static String serverCar = "localhost";
+    private static String serverFlight = "localhost";
+    private static String serverRoom = "localhost";
+
 
     public static void main(String args[]) {
         //Set up the server
@@ -72,9 +76,9 @@ public class MiddlewareManagerImpl implements ResourceManager
             Registry registry = LocateRegistry.getRegistry(port_server);
             registry.rebind("Group4MiddlewareManager", rm);
             //Connect to the resource managers
-            rmCar = connectToAResourceManager("localhost", 1099, "Group4ResourceManagerCar");
-            rmFlight = connectToAResourceManager("localhost", 1099, "Group4ResourceManagerFlight");
-            rmRoom = connectToAResourceManager("localhost", 1099, "Group4ResourceManagerRoom");
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerCar");
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerRoom");
             obj.finish2PC();
             System.err.println("Middleware ready");
         } catch (Exception e) {
@@ -182,6 +186,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
+        if (rmFlight == null){
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNum), DataObj.WRITE)){
             try{
@@ -215,6 +222,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmFlight = null;
+                throw e;
             }
 
             MiddlewareBackup.save(transactionManager);
@@ -227,6 +239,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
+        }
+        if (rmCar == null){
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerFlight");
         }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.WRITE)){
@@ -262,6 +277,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmCar = null;
+                throw e;
             }
 
             MiddlewareBackup.save(transactionManager);
@@ -274,6 +294,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
+        }
+        if (rmRoom == null){
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerFlight");
         }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.WRITE)){
@@ -309,6 +332,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmRoom = null;
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -321,16 +349,48 @@ public class MiddlewareManagerImpl implements ResourceManager
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
+        if (rmRoom == null){
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmCar == null){
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmFlight == null){
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
+        }
         int customerId = -1;
         try{
-            customerId =rmFlight.newCustomer(id);
-            rmRoom.newCustomer(id, customerId);
-            rmCar.newCustomer(id, customerId);
-        }
-        catch(Exception e){
+            rmFlight.queryCars(id,"azerty");
+        } catch (RemoteException e){
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
-            e.printStackTrace();
+            rmFlight = null;
+            throw e;
+        }
+        try{
+            rmRoom.queryCars(id, "azerty");
+        } catch (RemoteException e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            rmRoom = null;
+            throw e;
+        }
+        try{
+            rmCar.queryCars(id, "azerty");
+        } catch (RemoteException e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            rmCar = null;
+            throw e;
+        }
+        try{
+            customerId = rmFlight.newCustomer(id);
+            rmCar.newCustomer(id, customerId);
+            rmRoom.newCustomer(id, customerId);
+        } catch (RemoteException e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            throw e;
         }
         try {
             transactionManager.lock(id, TransactionManager.getKeyCustomer(customerId), DataObj.WRITE);
@@ -363,8 +423,42 @@ public class MiddlewareManagerImpl implements ResourceManager
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
+        if (rmRoom == null){
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmCar == null){
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmFlight == null){
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
+        }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCustomer(cid), DataObj.WRITE)){
+            int customerId = -1;
+            try{
+                rmFlight.queryCars(id,"azerty");
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmFlight = null;
+                throw e;
+            }
+            try{
+                rmRoom.queryCars(id, "azerty");
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmRoom = null;
+                throw e;
+            }
+            try{
+                rmCar.queryCars(id, "azerty");
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmCar = null;
+                throw e;
+            }
             try{
                 result = rmFlight.newCustomer(id, cid) &&
                         rmRoom.newCustomer(id, cid) &&
@@ -387,6 +481,10 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -398,6 +496,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
+        }
+        if (rmFlight == null){
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
         }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNum), DataObj.WRITE)){
@@ -425,6 +526,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmFlight = null;
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -436,6 +542,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
+        }
+        if (rmCar == null){
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerFlight");
         }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.WRITE)){
@@ -463,6 +572,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmCar = null;
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -474,6 +588,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
+        }
+        if (rmRoom == null){
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerFlight");
         }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.WRITE)){
@@ -502,6 +619,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmRoom = null;
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -514,6 +636,15 @@ public class MiddlewareManagerImpl implements ResourceManager
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
+        if (rmRoom == null){
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmCar == null){
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmFlight == null){
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
+        }
 
         List<String> customerObjects = getObjectCustomer(id, customer);
         for(String key: customerObjects){
@@ -522,6 +653,30 @@ public class MiddlewareManagerImpl implements ResourceManager
 
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE)){
+            try{
+                rmFlight.queryCars(id,"azerty");
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmFlight = null;
+                throw e;
+            }
+            try{
+                rmRoom.queryCars(id,"azerty");
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmRoom = null;
+                throw e;
+            }
+            try{
+                rmCar.queryCars(id, "azerty");
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmCar = null;
+                throw e;
+            }
             try{
                 if(!transactionManager.isRollback.get(id)){
                     prepareRollbackCustomer(id, customer);
@@ -559,6 +714,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
+        if (rmFlight == null){
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
+        }
         int seats = -1;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNumber), DataObj.READ)){
             try{
@@ -573,6 +731,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmFlight = null;
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -584,6 +747,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
+        }
+        if (rmCar == null){
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerFlight");
         }
         int numCars = -1;
         if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.READ)){
@@ -599,6 +765,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmCar = null;
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -610,6 +781,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
+        }
+        if (rmRoom == null){
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerFlight");
         }
         int numRooms = -1;
         if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.READ)){
@@ -625,6 +799,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmRoom = null;
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -637,8 +816,41 @@ public class MiddlewareManagerImpl implements ResourceManager
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
+        if (rmRoom == null){
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmCar == null){
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmFlight == null){
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
+        }
         String bill = "";
         if(transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.READ)){
+            try{
+                rmFlight.queryCars(id,"azerty");
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmFlight = null;
+                throw e;
+            }
+            try{
+                rmRoom.queryCars(id, "azerty");
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmRoom = null;
+                throw e;
+            }
+            try{
+                rmCar.queryCars(id, "azerty");
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmCar = null;
+                throw e;
+            }
             try{
                 bill+=rmFlight.queryCustomerInfo(id, customer);
                 String lines[] =rmCar.queryCustomerInfo(id, customer).split("\\r?\\n");
@@ -749,6 +961,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
         }
+        if (rmFlight == null){
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
+        }
         int price = -1;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNumber), DataObj.READ)){
             try{
@@ -763,6 +978,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmFlight = null;
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -774,6 +994,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
+        }
+        if (rmCar == null){
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerFlight");
         }
         int price = -1;
         if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.READ)){
@@ -789,6 +1012,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmCar = null;
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -800,6 +1028,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
+        }
+        if (rmRoom == null){
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerFlight");
         }
         int price = -1;
         if(transactionManager.lock(id, TransactionManager.getKeyRoom(location), DataObj.READ)){
@@ -815,6 +1046,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmRoom = null;
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -826,6 +1062,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
+        }
+        if (rmFlight == null){
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
         }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyFlight(flightNumber), DataObj.WRITE) &&
@@ -851,6 +1090,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmFlight = null;
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -862,6 +1106,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
+        }
+        if (rmCar == null){
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerFlight");
         }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyCar(location), DataObj.WRITE) &&
@@ -887,6 +1134,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println(e.getMessage());
                 abort(id);
                 throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmCar = null;
+                throw e;
             }
         }
         MiddlewareBackup.save(transactionManager);
@@ -898,6 +1150,9 @@ public class MiddlewareManagerImpl implements ResourceManager
         checkOldTransactions();
         if (transactionManager.clientTime.containsKey(id)) {
             resetTime(id);
+        }
+        if (rmRoom == null){
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerFlight");
         }
         boolean result = false;
         if(transactionManager.lock(id, TransactionManager.getKeyRoom(locationd), DataObj.WRITE) &&
@@ -922,6 +1177,11 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println("EXCEPTION:");
                 System.out.println(e.getMessage());
                 abort(id);
+                throw e;
+            } catch (RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                rmRoom = null;
                 throw e;
             }
         }
@@ -952,6 +1212,39 @@ public class MiddlewareManagerImpl implements ResourceManager
             resetTime(id);
         } // the case where the transaction has been aborted due to Client Timeout is
         //notified to the client by the exception thrown when tries to lock with invalid Xid
+        if (rmRoom == null){
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmCar == null){
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmFlight == null){
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
+        }
+        try{
+            rmFlight.queryCars(id,"azerty");
+        } catch (RemoteException e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            rmFlight = null;
+            throw e;
+        }
+        try{
+            rmRoom.queryCars(id, "azerty");
+        } catch (RemoteException e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            rmRoom = null;
+            throw e;
+        }
+        try{
+            rmCar.queryCars(id, "azerty");
+        } catch (RemoteException e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            rmCar = null;
+            throw e;
+        }
         ArrayList<Boolean> results = new ArrayList<>();
         //Lock everything
         transactionManager.lock(id, TransactionManager.getKeyCustomer(customer), DataObj.WRITE);
@@ -1048,6 +1341,15 @@ public class MiddlewareManagerImpl implements ResourceManager
         if (transactionManager.clientTime.containsKey(id)){
             transactionManager.clientTime.remove(id);
         }
+        if (rmRoom == null){
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmCar == null){
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmFlight == null){
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
+        }
         if(!transactionManager.transactions.contains(id)){
             throw new InvalidTransactionException(id, "Transaction "+id+" does not exist");
         }
@@ -1067,6 +1369,7 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println("    Transaction "+id+": RM Room voted "+vote.toString());
             } catch (RemoteException e){
                 System.out.println("    Transaction "+id+": RM Room timeout");
+                rmRoom = null;
                 return false;
             }
             MiddlewareBackup.save(transactionManager);
@@ -1085,6 +1388,7 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println("    Transaction "+id+": RM Flight voted "+vote.toString());
             } catch (RemoteException e){
                 System.out.println("    Transaction "+id+": RM Flight timeout");
+                rmFlight = null;
                 return false;
             }
             MiddlewareBackup.save(transactionManager);
@@ -1099,6 +1403,7 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println("    Transaction "+id+": RM Car voted "+vote.toString());
             } catch (RemoteException e){
                 System.out.println("    Transaction "+id+": RM Car timeout");
+                rmCar = null;
                 return false;
             }
             MiddlewareBackup.save(transactionManager);
@@ -1122,6 +1427,7 @@ public class MiddlewareManagerImpl implements ResourceManager
                     transactionManager.decisions.get(id).replace(RM_CAR, true);
                 }catch (RemoteException e){
                     System.out.println("    Transaction "+id+": RM Car timeout");
+                    rmCar = null;
                 }
                 MiddlewareBackup.save(transactionManager);
             }
@@ -1137,6 +1443,7 @@ public class MiddlewareManagerImpl implements ResourceManager
                     transactionManager.decisions.get(id).replace(RM_FLIGHT, true);
                 }catch (RemoteException e){
                     System.out.println("    Transaction "+id+": RM Flight timeout");
+                    rmFlight = null;
                 }
                 MiddlewareBackup.save(transactionManager);
             }
@@ -1148,6 +1455,7 @@ public class MiddlewareManagerImpl implements ResourceManager
                     transactionManager.decisions.get(id).replace(RM_ROOM, true);
                 }catch (RemoteException e){
                     System.out.println("    Transaction "+id+": RM Room timeout");
+                    rmRoom = null;
                 }
                 MiddlewareBackup.save(transactionManager);
             }
@@ -1186,8 +1494,44 @@ public class MiddlewareManagerImpl implements ResourceManager
         if (transactionManager.clientTime.containsKey(id)){
             transactionManager.clientTime.remove(id);
         }
+        if (rmRoom == null){
+            rmRoom = connectToAResourceManager(serverRoom, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmCar == null){
+            rmCar = connectToAResourceManager(serverCar, 1099, "Group4ResourceManagerFlight");
+        }
+        if (rmFlight == null){
+            rmFlight = connectToAResourceManager(serverFlight, 1099, "Group4ResourceManagerFlight");
+        }
         if(!transactionManager.transactions.contains(id)){
             throw new InvalidTransactionException(id, "Transaction "+id+" does not exist");
+        }
+        try{
+            rmFlight.queryCars(id,"azerty");
+        } catch (RemoteException e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            rmFlight = null;
+            throw e;
+        }catch (TransactionAbortedException e) {
+        }
+        try{
+            rmRoom.queryCars(id, "azerty");
+        } catch (RemoteException e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            rmRoom = null;
+            throw e;
+        }catch (TransactionAbortedException e) {
+        }
+        try{
+            rmCar.queryCars(id, "azerty");
+        } catch (RemoteException e){
+            System.out.println("EXCEPTION:");
+            System.out.println(e.getMessage());
+            rmCar = null;
+            throw e;
+        }catch (TransactionAbortedException e) {
         }
 
         transactionManager.isRollback.replace(id, true);

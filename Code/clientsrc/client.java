@@ -1,4 +1,6 @@
 import ResInterface.*;
+
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.RMISecurityManager;
@@ -105,11 +107,15 @@ public class client
             else
                 System.out.println("Flight could not be added");
             }
-            catch(Exception e){
+            catch(RemoteException e){
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
             e.printStackTrace();
             rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -132,11 +138,15 @@ public class client
             else
                 System.out.println("Cars could not be added");
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -159,11 +169,15 @@ public class client
             else
                 System.out.println("Rooms could not be added");
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -178,11 +192,15 @@ public class client
             int customer=rm.newCustomer(Id);
             System.out.println("new customer id:"+customer);
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -201,11 +219,15 @@ public class client
             else
                 System.out.println("Flight could not be deleted");
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -225,11 +247,15 @@ public class client
             else
                 System.out.println("Cars could not be deleted");
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -248,11 +274,15 @@ public class client
             else
                 System.out.println("Rooms could not be deleted");
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -271,11 +301,15 @@ public class client
             else
                 System.out.println("Customer could not be deleted");
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -292,11 +326,15 @@ public class client
             int seats=rm.queryFlight(Id,flightNum);
             System.out.println("Number of seats available:"+seats);
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -313,11 +351,15 @@ public class client
             numCars=rm.queryCars(Id,location);
             System.out.println("number of Cars at this location:"+numCars);
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -334,11 +376,15 @@ public class client
             numRooms=rm.queryRooms(Id,location);
             System.out.println("number of Rooms at this location:"+numRooms);
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -355,11 +401,15 @@ public class client
             String bill=rm.queryCustomerInfo(Id,customer);
             System.out.println("Customer info:"+bill);
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;               
             
@@ -376,11 +426,15 @@ public class client
             price=rm.queryFlightPrice(Id,flightNum);
             System.out.println("Price of a seat:"+price);
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -397,12 +451,16 @@ public class client
             price=rm.queryCarsPrice(Id,location);
             System.out.println("Price of a car at this location:"+price);
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
-            }                
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
             break;
 
         case 16: //querying a Room price
@@ -418,11 +476,15 @@ public class client
             price=rm.queryRoomsPrice(Id,location);
             System.out.println("Price of Rooms at this location:"+price);
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -443,11 +505,15 @@ public class client
             else
                 System.out.println("Flight could not be reserved.");
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -470,11 +536,15 @@ public class client
             else
                 System.out.println("Car could not be reserved.");
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -496,11 +566,15 @@ public class client
             else
                 System.out.println("Room could not be reserved.");
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
             
@@ -531,11 +605,15 @@ public class client
             else
                 System.out.println("Itinerary could not be reserved.");
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
                         
@@ -560,11 +638,15 @@ public class client
             boolean customer=rm.newCustomer(Id,Cid);
             System.out.println("new customer id:"+Cid);
             }
-            catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-            rm = null;
+            catch(RemoteException e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+                rm = null;
+            } catch(Exception e){
+                System.out.println("EXCEPTION:");
+                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             break;
 
@@ -578,11 +660,15 @@ public class client
                     Id = rm.start();
                     System.out.println("transaction Id : " + Id);
                 }
-                catch(Exception e){
-                    System.out.println("Exception");
+                catch(RemoteException e){
+                    System.out.println("EXCEPTION:");
                     System.out.println(e.getMessage());
                     e.printStackTrace();
                     rm = null;
+                } catch(Exception e){
+                    System.out.println("EXCEPTION:");
+                    System.out.println(e.getMessage());
+                    e.printStackTrace();
                 }
                 break;
 
@@ -597,11 +683,15 @@ public class client
                     if(rm.commit(Id)){
                         System.out.println("transaction " + Id + " committed");
                     }
-                } catch (Exception e) {
-                    System.out.println("Exception:");
+                }catch(RemoteException e){
+                    System.out.println("EXCEPTION:");
                     System.out.println(e.getMessage());
                     e.printStackTrace();
                     rm = null;
+                } catch(Exception e){
+                    System.out.println("EXCEPTION:");
+                    System.out.println(e.getMessage());
+                    e.printStackTrace();
                 }
                 break;
 
@@ -615,11 +705,15 @@ public class client
                     System.out.println("aborting transaction " + Id);
                     rm.abort(Id);
                     System.out.println("aborted transaction " + Id);
-                } catch (Exception e) {
-                    System.out.println("Exception:");
+                }catch(RemoteException e){
+                    System.out.println("EXCEPTION:");
                     System.out.println(e.getMessage());
                     e.printStackTrace();
                     rm = null;
+                } catch(Exception e){
+                    System.out.println("EXCEPTION:");
+                    System.out.println(e.getMessage());
+                    e.printStackTrace();
                 }
                 break;
 
