@@ -726,13 +726,25 @@ public class client
                     rm.shutdown();
                     System.out.println("Shutdown");
                 } catch (Exception e) {
-                    //System.out.println("Exception:");
-                    //System.out.println(e.getMessage());
-                    //e.printStackTrace();
                     System.exit(0);
                 }
                 System.out.println("Shutdown impossible");
-            
+                break;
+            case 27: //crash
+                if (arguments.size()!=3){
+                    obj.wrongNumber();
+                    break;
+                }
+                try {
+                    location = obj.getString(arguments.elementAt(1));
+                    int errorCode = obj.getInt(arguments.elementAt(2));
+                    rm.crash(location, errorCode);
+                } catch (Exception e) {
+                    System.out.println("Exception:");
+                    System.out.println(e.getMessage());
+                    e.printStackTrace();
+                }
+                break;
         default:
             System.out.println("The interface does not support this command.");
             break;
@@ -832,6 +844,8 @@ public class client
         return 25;
     else if (argument.compareToIgnoreCase("shutdown")==0)
         return 26;
+    else if (argument.compareToIgnoreCase("crash")==0)
+        return 27;
     else
         return 666;
 
