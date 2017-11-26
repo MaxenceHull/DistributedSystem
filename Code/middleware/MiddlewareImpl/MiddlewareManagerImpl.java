@@ -1067,7 +1067,6 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println("    Transaction "+id+": RM Room voted "+vote.toString());
             } catch (RemoteException e){
                 System.out.println("    Transaction "+id+": RM Room timeout");
-                abort(id);
                 return false;
             }
             MiddlewareBackup.save(transactionManager);
@@ -1086,7 +1085,6 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println("    Transaction "+id+": RM Flight voted "+vote.toString());
             } catch (RemoteException e){
                 System.out.println("    Transaction "+id+": RM Flight timeout");
-                abort(id);
                 return false;
             }
             MiddlewareBackup.save(transactionManager);
@@ -1101,7 +1099,6 @@ public class MiddlewareManagerImpl implements ResourceManager
                 System.out.println("    Transaction "+id+": RM Car voted "+vote.toString());
             } catch (RemoteException e){
                 System.out.println("    Transaction "+id+": RM Car timeout");
-                abort(id);
                 return false;
             }
             MiddlewareBackup.save(transactionManager);
@@ -1125,7 +1122,6 @@ public class MiddlewareManagerImpl implements ResourceManager
                     transactionManager.decisions.get(id).replace(RM_CAR, true);
                 }catch (RemoteException e){
                     System.out.println("    Transaction "+id+": RM Car timeout");
-                    abort(id);
                 }
                 MiddlewareBackup.save(transactionManager);
             }
@@ -1141,7 +1137,6 @@ public class MiddlewareManagerImpl implements ResourceManager
                     transactionManager.decisions.get(id).replace(RM_FLIGHT, true);
                 }catch (RemoteException e){
                     System.out.println("    Transaction "+id+": RM Flight timeout");
-                    abort(id);
                 }
                 MiddlewareBackup.save(transactionManager);
             }
@@ -1153,7 +1148,6 @@ public class MiddlewareManagerImpl implements ResourceManager
                     transactionManager.decisions.get(id).replace(RM_ROOM, true);
                 }catch (RemoteException e){
                     System.out.println("    Transaction "+id+": RM Room timeout");
-                    abort(id);
                 }
                 MiddlewareBackup.save(transactionManager);
             }
@@ -1166,6 +1160,18 @@ public class MiddlewareManagerImpl implements ResourceManager
 
         } else {
             System.out.println("    Abort transaction "+id);
+            try {
+                rmRoom.abort(id);
+            }catch (RemoteException e){
+            }
+            try {
+                rmCar.abort(id);
+            }catch (RemoteException e){
+            }
+            try {
+                rmFlight.abort(id);
+            }catch (RemoteException e){
+            }
             abort(id);
         }
 
