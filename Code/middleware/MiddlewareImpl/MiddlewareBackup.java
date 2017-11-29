@@ -15,7 +15,7 @@ public class MiddlewareBackup {
             out.writeObject(tm);
             out.close();
             fileOut.close();
-            System.out.println("Serialized data is saved in MiddlewareBackup");
+            //System.out.println("Serialized data is saved in MiddlewareBackup");
         } catch (IOException i) {
             i.printStackTrace();
         }
@@ -30,16 +30,9 @@ public class MiddlewareBackup {
             in.close();
             fileIn.close();
         } catch (IOException i) {
-            i.printStackTrace();
+            System.out.println("No backup file");
         } catch (ClassNotFoundException c) {
             c.printStackTrace();
-        }
-        if(result != null){
-            System.out.println("Backup done from MiddlewareBackup: ");
-            System.out.println(result.transactions.toString());
-            System.out.println(result.actions.toString());
-            System.out.println(result.isRollback.toString());
-            System.out.println(result.clientTime.toString());
         }
 
         return result;

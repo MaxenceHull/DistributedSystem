@@ -127,18 +127,6 @@ public interface ResourceManager extends Remote
     public boolean reserveRoom(int id, int customer, String location)
 	throws RemoteException, InvalidTransactionException, TransactionAbortedException;
 
-    /* cancel a room at this location */
-    public boolean cancelRoom(int id, int customer, String location)
-            throws RemoteException, InvalidTransactionException, TransactionAbortedException;
-
-    /* cancel a seat in this flight */
-    public boolean cancelFlight(int id, int customer, int flightNumber)
-            throws RemoteException, InvalidTransactionException, TransactionAbortedException;
-
-    /* cancel a car at this location */
-    public boolean cancelCar(int id, int customer, String location)
-            throws RemoteException, InvalidTransactionException, TransactionAbortedException;
-
     /* reserve an itinerary */
     public boolean itinerary(int id,int customer,Vector flightNumbers,String location, boolean Car, boolean Room)
 	throws RemoteException, InvalidTransactionException, TransactionAbortedException;
@@ -151,7 +139,7 @@ public interface ResourceManager extends Remote
 
     public boolean shutdown() throws RemoteException;
 
-    public boolean voteRequest() throws RemoteException;
+    public boolean voteRequest(int id) throws RemoteException;
 
     public void crash(String location, int error) throws RemoteException;
     			

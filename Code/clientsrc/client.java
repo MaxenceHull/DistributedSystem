@@ -680,9 +680,7 @@ public class client
                 try {
                     Id = obj.getInt(arguments.elementAt(1));
                     System.out.println("committing transaction "+Id);
-                    if(rm.commit(Id)){
-                        System.out.println("transaction " + Id + " committed");
-                    }
+                    rm.commit(Id);
                 }catch(RemoteException e){
                     System.out.println("EXCEPTION:");
                     System.out.println(e.getMessage());
