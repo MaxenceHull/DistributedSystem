@@ -8,9 +8,9 @@
   * One server manages cars reservation
   * One server acts as a middleware
 * During this project, we implemented some well-known conpcepts in distrubted systems such as
- * 2 phase commit
- * 2 phase locking 
- * Data shadowing
+  * 2 phase commit
+  * 2 phase locking 
+  * Data shadowing
 
 # Notes
 * We used the Java RMI library to enable communication between servers
