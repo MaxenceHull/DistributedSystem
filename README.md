@@ -14,3 +14,4 @@
 
 # Notes
 * We used the Java RMI library to enable communication between servers
+* ![Architecture](https://github.com/hulm2701/COMP512/blob/master/Architecture.png)
